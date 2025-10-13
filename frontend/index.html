@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 發文小幫手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        .label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #4b5563;
+        }
+        .input, .select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input:focus, .select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .btn {
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 700;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .tab-button {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        .tab-button.active {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            border-color: #a5b4fc;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f0f2f5;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-button:hover {
+            background-color: #e5e7eb;
+        }
+        #error-box {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            display: none;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">🚀 AI 發文小幫手</h1>
+            <p class="text-gray-600 mt-2">輸入您的內容，讓 AI 為您生成精彩的圖文貼文！</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column: Inputs -->
+            <div class="card">
+                <h2 class="text-2xl font-bold mb-6">1. 輸入設定</h2>
+                
+                <div class="input-group">
+                    <label for="apiKey" class="label">Gemini API 金鑰</label>
+                    <input type="password" id="apiKey" class="input" placeholder="請在此貼上您的 API 金鑰">
+                </div>
+
+                <!-- Input Source Tabs -->
+                <div class="input-group">
+                    <label class="label">內容來源</label>
+                    <div id="tabs" class="flex space-x-2 border-b border-gray-200 mb-4">
+                        <button class="tab-button active" data-tab="text">📝 文字</button>
+                        <button class="tab-button" data-tab="url">🔗 網址</button>
+                        <button class="tab-button" data-tab="image">🖼️ 圖片</button>
+                        <button class="tab-button" data-tab="file">📄 檔案</button>
+                    </div>
+                    <div id="tab-content">
+                        <!-- Text Input -->
+                        <div id="text-tab">
+                            <textarea id="text-input" class="input" rows="6" placeholder="請輸入貼文相關的文字、主題或關鍵字..."></textarea>
+                        </div>
+                        <!-- URL Input -->
+                        <div id="url-tab" class="hidden">
+                            <input type="url" id="url-input" class="input" placeholder="https://example.com">
+                        </div>
+                        <!-- Image Input -->
+                        <div id="image-tab" class="hidden">
+                            <input type="file" id="image-input" class="input" accept="image/*">
+                            <img id="image-preview" class="hidden mt-4 rounded-lg max-w-xs mx-auto" alt="圖片預覽">
+                        </div>
+                        <!-- File Input -->
+                        <div id="file-tab" class="hidden">
+                           <input type="file" id="file-input" class="input" accept=".txt,.md,.doc,.docx">
+                           <p id="file-name" class="text-sm text-gray-500 mt-2"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="post-type" class="label">生成形式</label>
+                    <select id="post-type" class="select">
+                        <option value="一般貼文">一般貼文</option>
+                        <option value="廣告貼文">廣告貼文</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="style" class="label">風格語調</label>
+                    <select id="style" class="select">
+                        <option value="無">無 (由AI決定)</option>
+                        <option value="專業">專業</option>
+                        <option value="幽默">幽默</option>
+                        <option value="引人入勝">引人入勝</option>
+                        <option value="興奮">興奮</option>
+                        <option value="有創意">有創意</option>
+                        <option value="鼓舞人心">鼓舞人心</option>
+                        <option value="溫馨">溫馨</option>
+                        <option value="戲劇性">戲劇性</option>
+                        <option value="諷刺">諷刺</option>
+                        <option value="親切">親切</option>
+                        <option value="add_new">...新增語調</option>
+                    </select>
+                </div>
+
+                <div id="custom-style-wrapper" class="input-group hidden">
+                    <label for="custom-style-input" class="label">自訂語調</label>
+                    <input type="text" id="custom-style-input" class="input" placeholder="例如：像海盜一樣說話">
+                </div>
+
+                <button id="generate-btn" class="btn">✨ 開始生成</button>
+
+                 <div id="error-box">
+                    <h3 class="font-bold">發生錯誤</h3>
+                    <p id="error-message"></p>
+                </div>
+            </div>
+
+            <!-- Right Column: Output -->
+            <div class="card">
+                <h2 class="text-2xl font-bold mb-6">2. 生成結果</h2>
+                <div id="result-container" class="space-y-6">
+                    <div id="placeholder" class="text-center text-gray-500 py-20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <p class="mt-2">生成的圖片和文字將會顯示在這裡</p>
+                    </div>
+                    <div id="loading-indicator" class="hidden flex flex-col items-center justify-center py-20">
+                        <div class="loader"></div>
+                        <p class="mt-4 text-gray-600">AI 正在努力創作中，請稍候...</p>
+                    </div>
+                    <div id="output" class="hidden space-y-6">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">生成圖片</h3>
+                            <div id="image-output" class="flex justify-center items-center bg-gray-100 rounded-lg min-h-[200px]"></div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">生成文案</h3>
+                            <div id="text-output" class="relative bg-gray-100 p-4 rounded-lg whitespace-pre-wrap min-h-[150px]">
+                                <button id="copy-btn" class="copy-button">複製</button>
+                                <p id="text-content"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const apiKeyInput = document.getElementById('apiKey');
+        const generateBtn = document.getElementById('generate-btn');
+        const tabs = document.querySelectorAll('.tab-button');
+        const textInput = document.getElementById('text-input');
+        const urlInput = document.getElementById('url-input');
+        const imageInput = document.getElementById('image-input');
+        const imagePreview = document.getElementById('image-preview');
+        const fileInput = document.getElementById('file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        const postTypeSelect = document.getElementById('post-type');
+        const styleSelect = document.getElementById('style');
+        const customStyleWrapper = document.getElementById('custom-style-wrapper');
+        const customStyleInput = document.getElementById('custom-style-input');
+        
+        const placeholder = document.getElementById('placeholder');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const outputContainer = document.getElementById('output');
+        const imageOutput = document.getElementById('image-output');
+        const textContent = document.getElementById('text-content');
+        const copyBtn = document.getElementById('copy-btn');
+        const errorBox = document.getElementById('error-box');
+        const errorMessage = document.getElementById('error-message');
+
+        let activeTab = 'text';
+        let uploadedImageBase64 = null;
+        let uploadedFileContent = null;
+        
+        // --- Event Listeners ---
+
+        // Tab switching logic
+        tabs.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                activeTab = tabName;
+                
+                tabs.forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                
+                document.querySelectorAll('#tab-content > div').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            });
+        });
+
+        // Style dropdown logic
+        styleSelect.addEventListener('change', () => {
+            if (styleSelect.value === 'add_new') {
+                customStyleWrapper.classList.remove('hidden');
+            } else {
+                customStyleWrapper.classList.add('hidden');
+            }
+        });
+
+        // Image upload and preview
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    uploadedImageBase64 = event.target.result.split(',')[1];
+                    imagePreview.src = event.target.result;
+                    imagePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // File upload logic
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    uploadedFileContent = event.target.result;
+                    fileNameDisplay.textContent = `已選擇檔案: ${file.name}`;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Generate button click
+        generateBtn.addEventListener('click', handleGeneration);
+
+        // Copy button
+        copyBtn.addEventListener('click', () => {
+            const textToCopy = textContent.innerText;
+            // Using document.execCommand for broader compatibility in sandboxed environments
+            const textArea = document.createElement('textarea');
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                copyBtn.textContent = '已複製!';
+                setTimeout(() => { copyBtn.textContent = '複製'; }, 2000);
+            } catch (err) {
+                console.error('無法複製文字: ', err);
+                copyBtn.textContent = '複製失敗';
+            }
+            document.body.removeChild(textArea);
+        });
+
+        // --- Core Functions ---
+
+        async function handleGeneration() {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showError('請輸入您的 Gemini API 金鑰。');
+                return;
+            }
+
+            // Reset UI
+            hideError();
+            placeholder.classList.add('hidden');
+            outputContainer.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            generateBtn.disabled = true;
+            generateBtn.textContent = '生成中...';
+            
+            try {
+                const { prompt, imagePart } = buildPromptAndImage();
+                const model = 'gemini-2.5-flash-image-preview'; // Model for text and image generation
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['TEXT', 'IMAGE']
+                    },
+                };
+                
+                if (imagePart) {
+                    payload.contents[0].parts.push(imagePart);
+                }
+
+                const response = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `API 請求失敗，狀態碼: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                const textPart = result?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || '無法生成文字內容。';
+                const imageBase64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                displayResults(textPart, imageBase64Data);
+
+            } catch (error) {
+                console.error('生成過程中發生錯誤:', error);
+                showError(error.message);
+                placeholder.classList.remove('hidden'); // Show placeholder on error
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = '✨ 開始生成';
+            }
+        }
+        
+        function buildPromptAndImage() {
+            let content = '';
+            let imagePart = null;
+
+            switch (activeTab) {
+                case 'text':
+                    content = `基於以下文字: "${textInput.value.trim()}"`;
+                    break;
+                case 'url':
+                    content = `基於這個網址的內容 (請自行想像其內容): ${urlInput.value.trim()}`;
+                    break;
+                case 'file':
+                    content = `基於以下文件內容: "${uploadedFileContent}"`;
+                    break;
+                case 'image':
+                    content = '請描述這張圖片，並以此為靈感創作。';
+                    if (uploadedImageBase64) {
+                        imagePart = {
+                            inlineData: {
+                                mimeType: "image/jpeg", // Assuming jpeg, works for png too
+                                data: uploadedImageBase64
+                            }
+                        };
+                    }
+                    break;
+            }
+
+            const postType = postTypeSelect.value;
+            let style = styleSelect.value;
+            if (style === 'add_new') {
+                style = customStyleInput.value.trim();
+            } else if (style === '無') {
+                style = ''; // Let AI decide
+            }
+            
+            const stylePrompt = style ? `請使用「${style}」的風格語調。` : '請使用最適合的風格語調。';
+
+            const prompt = `
+                請扮演一位社群媒體行銷專家。
+                你的任務是根據我提供的資料，生成一份包含「圖片」和「文案」的社群媒體貼文。
+
+                ## 任務指示:
+                1.  **生成文案**: 創作一篇引人注目的「${postType}」文案。${stylePrompt} 文案應該包含相關的 hashtags。
+                2.  **生成圖片**: 創作一張與文案主題和風格相符的精美圖片。
+
+                ## 輸入資料:
+                ${content}
+
+                請立即開始創作。
+            `;
+            return { prompt, imagePart };
+        }
+
+        function displayResults(text, imageBase64) {
+            textContent.innerText = text.trim();
+            imageOutput.innerHTML = '';
+            
+            if (imageBase64) {
+                const img = document.createElement('img');
+                img.src = `data:image/png;base64,${imageBase64}`;
+                img.alt = 'AI 生成的圖片';
+                img.className = 'result-image';
+                imageOutput.appendChild(img);
+            } else {
+                imageOutput.textContent = '無法生成圖片。';
+            }
+            
+            outputContainer.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorBox.style.display = 'block';
+        }
+        
+        function hideError() {
+            errorBox.style.display = 'none';
+        }
+        
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    // 429 is too many requests, a common reason for retry
+                    if (response.status === 429 && i < retries - 1) {
+                         console.log(`Request throttled. Retrying in ${delay / 1000}s...`);
+                         await new Promise(resolve => setTimeout(resolve, delay));
+                         delay *= 2; // Exponential backoff
+                         continue;
+                    }
+                    return response;
+                } catch (error) {
+                    if (i < retries - 1) {
+                        console.log(`Request failed. Retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>
