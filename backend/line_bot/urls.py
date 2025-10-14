@@ -2,5 +2,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('webhook/', views.line_webhook, name='line-webhook'),
+    path('webhook/<int:business_id>/', views.line_webhook, name='line-webhook'),
 ]
