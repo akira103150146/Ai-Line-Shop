@@ -20,12 +20,10 @@ makemigrations:
 install:
 	pip install -r requirements.txt
 
-# ==============================================================================
-# Linting and Formatting (未來可擴充)
-# ==============================================================================
+# 創建管理員帳號
+createadmin:
+	python manage.py createsuperuser
 
-# lint:
-# 	flake8 .
-
-# format:
-# 	black .
+# 啟動Django Shell
+shell:
+	python manage.py shell
