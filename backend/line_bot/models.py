@@ -2,6 +2,12 @@ from django.db import models
 
 class Business(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="商家名稱")
+    channel_id = models.CharField(
+        max_length=150,
+        unique=True, # 關鍵設定：確保這個欄位在資料庫中不能重複
+        verbose_name="LINE Channel ID",
+        help_text="請輸入此商家的 LINE Channel ID，它將作為唯一的識別碼。"
+    )
 
     # 【新增】儲存每個商家自己的 LINE 金鑰
     channel_secret = models.CharField(max_length=200, verbose_name="Channel Secret")
