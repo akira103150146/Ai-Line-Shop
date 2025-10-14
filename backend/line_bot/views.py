@@ -21,10 +21,10 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from .models import Business
 
 @csrf_exempt
-def line_webhook(request, business_id):
+def line_webhook(request, channel_id):
     # 根據 business_id 從資料庫找出對應的商家
     try:
-        business = Business.objects.get(id=business_id)
+        business = Business.objects.get(channel_id=channel_id)
     except Business.DoesNotExist:
         return HttpResponseBadRequest("Business not found")
 
