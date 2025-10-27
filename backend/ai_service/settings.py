@@ -43,7 +43,7 @@ if GCP_PROJECT_ID:
         payload = client.access_secret_version(name=name).payload.data.decode("UTF-8")
         
         # 將從 Secret Manager 讀取到的 .env 格式字串，注入到系統環境變數中
-        os.environ.update(io.StringIO(payload))
+        load_dotenv(stream=io.StringIO(payload))
     except Exception as e:
         print(f"CRITICAL: 無法從 GCP Secret Manager 載入金鑰: {e}")
         # 在生產環境中，如果載入失敗，我們應該讓它崩潰
