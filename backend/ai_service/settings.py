@@ -11,25 +11,72 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import io # 引入 io 模組
 from pathlib import Path
-from dotenv import load_dotenv # 引入 load_dotenv
+import dj_database_url # 引入 dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 載入 .env 檔案
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+# ==============================================================================
+# 環境判斷與金鑰載入 (PRODUCTION vs DEVELOPMENT)
+# ==============================================================================
+
+# 預設環境為開發環境
+ENV_TYPE = 'dev'
+# Cloud Run 會自動注入這個環境變數
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT") 
+
+if GCP_PROJECT_ID:
+    # 如果偵測到 GCP_PROJECT 環境變數，則切換為生產環境
+    ENV_TYPE = 'prod'
+    try:
+        # 僅在生產環境中才 import GCP 相關套件
+        from google.cloud import secretmanager
+        client = secretmanager.SecretManagerServiceClient()
+        
+        # 這是您在 GCP Secret Manager 建立的密鑰名稱
+        settings_name = "django-settings" 
+        
+        name = f"projects/{GCP_PROJECT_ID}/secrets/{settings_name}/versions/latest"
+        payload = client.access_secret_version(name=name).payload.data.decode("UTF-8")
+        
+        # 將從 Secret Manager 讀取到的 .env 格式字串，注入到系統環境變數中
+        os.environ.update(io.StringIO(payload))
+    except Exception as e:
+        print(f"CRITICAL: 無法從 GCP Secret Manager 載入金鑰: {e}")
+        # 在生產環境中，如果載入失敗，我們應該讓它崩潰
+        raise
+else:
+    # 如果不在 GCP (ENV_TYPE 保持 'dev')，則從本地 .env 檔案載入
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(BASE_DIR, '.env'))
+    print("Running in DEV mode, loaded .env file.") # 方便本地除錯
+
+# ==============================================================================
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# SECRET_KEY 現在會根據環境，自動從 .env 或 Secret Manager 讀取
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# 根據環境切換 DEBUG 模式
+if ENV_TYPE == 'prod':
+    DEBUG = False
+else:
+    DEBUG = True # 本地開發時開啟 DEBUG
 
-ALLOWED_HOSTS = []
+# 根據環境設定允許的主機
+if ENV_TYPE == 'prod':
+    # 允許 Cloud Run 的服務 URL
+    # Cloud Run 會在前端代理處理好主機安全
+    ALLOWED_HOSTS = ['*'] 
+else:
+    # 本地開發時
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -40,12 +87,15 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'line_bot'
+    'django.contrib.staticfiles', # Django 內建的靜態檔案管理
+    'line_bot',
+    'rest_framework', # 我們 API 功能所需的套件
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise 中介軟體，必須放在 SecurityMiddleware 之後
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,11 +127,18 @@ WSGI_APPLICATION = 'ai_service.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# 使用 dj-database-url 自動根據環境變數設定資料庫
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        # dj-database-url 會自動讀取 DB_NAME, DB_USER, DB_HOST 等環境變數
+        # (我們在 GCP Secret Manager 中已設定)
+        
+        # 如果讀不到 (例如本地 .env 沒設)，則回退使用 sqlite (適用於本地開發)
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        
+        # 資料庫連線保持 600 秒 (生產環境最佳實踐)
+        conn_max_age=600 
+    )
 }
 
 
@@ -121,6 +178,21 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# ==============================================================================
+# 生產環境靜態檔案設定 (WhiteNoise)
+# ==============================================================================
+# 告訴 Django 在生產環境中，`collectstatic` 指令要把所有靜態檔案收集到哪裡
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# 設定 WhiteNoise 為靜態檔案的儲存後端
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+# ==============================================================================
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -130,3 +202,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # OPENAI API SETTINGS
 # ==============================================================================
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# ==============================================================================
+# 生產環境 CSRF 安全設定
+# ==============================================================================
+if ENV_TYPE == 'prod':
+    SERVICE_URL = os.getenv('SERVICE_URL')
+    if SERVICE_URL:
+        # 信任來自 Cloud Run 服務 URL 的 HTTPS 請求
+        CSRF_TRUSTED_ORIGINS = [SERVICE_URL]
