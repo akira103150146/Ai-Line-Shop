@@ -26,4 +26,4 @@ RUN python3 manage.py collectstatic --noinput
 # 8. 設定 Gunicorn 啟動指令
 # Cloud Run 會自動設定 $PORT 環境變數
 # Gunicorn 會監聽 0.0.0.0 (所有 IP) 上的 $PORT
-CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 ai_service_project.wsgi:application
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 ai_service.wsgi:application
