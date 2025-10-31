@@ -20,8 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 6. 複製整個專案程式碼到工作目錄
 COPY . .
 
-RUN chmod +x /app/startup.sh
-
 # 7. 執行 collectstatic，收集所有靜態檔案 (例如 Admin 的 CSS)
 RUN python3 manage.py collectstatic --noinput
 
