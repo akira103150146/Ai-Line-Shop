@@ -1,7 +1,7 @@
 # Dockerfile
 
 # 1. 使用官方的 Python 3.10 slim 鏡像
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # 2. 設定環境變數，讓 Python 輸出更即時
 ENV PYTHONUNBUFFERED 1
