@@ -1,11 +1,64 @@
-# Python cache
-__pycache__
-db.sqlite3
+忽略所有 .env 檔案，這是最重要的安全規則！
 
-# Virtual Environment
+這裡存放了您所有的 API 金鑰和資料庫密碼。
+
+*.env
+.env
+
+忽略本地資料庫檔案
+
+我們的生產環境使用 Cloud SQL，這個檔案只在本地開發時使用。
+
+db.sqlite3
+db.sqlite3-journal
+
+忽略 Python 虛擬環境資料夾
+
+每個開發者都應該在本地自行建立虛擬環境。
+
 venv/
 env/
-backend/.env
+.venv/
 
-# Database file
-db.sqlite3
+忽略 Python 快取檔案
+
+這些是 Python 自動產生的，會造成 Git 儲存庫雜亂。
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+忽略 Django 收集的靜態檔案
+
+我們的生產環境 (Cloud Run) 會在部署時自動執行 collectstatic。
+
+本地產生的 staticfiles/ 不需要被版本控制。
+
+staticfiles/
+media/
+
+忽略 IDE 和編輯器設定檔
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+忽略作業系統產生的檔案
+
+macOS
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Windows
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+忽略 gcloud 指令產生的日誌
+
+.gcloud/
