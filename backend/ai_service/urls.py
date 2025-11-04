@@ -16,8 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('line/', include('line_bot.urls')), 
+    path('line/', include('line_bot.urls')),
+    path('api/users/<str:username>/', views.get_user_by_username, name='get-user-by-username'),
+    # path('api/debug/',views.debug_environment, name='debug-environment')
 ]

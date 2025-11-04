@@ -124,16 +124,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ai_service.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 # 使用 dj-database-url 自動根據環境變數設定資料庫
 DATABASES = {
     'default': dj_database_url.config(
-        # dj-database-url 會自動讀取 DB_NAME, DB_USER, DB_HOST 等環境變數
-        # (我們在 GCP Secret Manager 中已設定)
-        
         # 如果讀不到 (例如本地 .env 沒設)，則回退使用 sqlite (適用於本地開發)
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         
