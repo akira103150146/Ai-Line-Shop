@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 發文小幫手</title>
+    <title>AI發文小幫手</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,7 @@
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #ffffff;
             color: #1c1e21;
         }
         .card {
@@ -124,14 +124,15 @@
 <body class="p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-800">🚀 AI 發文小幫手</h1>
-            <p class="text-gray-600 mt-2">輸入您的內容，讓 AI 為您生成精彩的圖文貼文！</p>
+          
+            <h1 class="text-4xl font-bold text-gray-800">AI 發文小幫手</h1>
+
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Left Column: Inputs -->
             <div class="card">
-                <h2 class="text-2xl font-bold mb-6">1. 輸入設定</h2>
+                <h2 class="text-2xl font-bold mb-6">輸入設定</h2>
                 
                 <div class="input-group">
                     <label for="apiKey" class="label">Gemini API 金鑰</label>
@@ -142,10 +143,10 @@
                 <div class="input-group">
                     <label class="label">內容來源</label>
                     <div id="tabs" class="flex space-x-2 border-b border-gray-200 mb-4">
-                        <button class="tab-button active" data-tab="text">📝 文字</button>
-                        <button class="tab-button" data-tab="url">🔗 網址</button>
-                        <button class="tab-button" data-tab="image">🖼️ 圖片</button>
-                        <button class="tab-button" data-tab="file">📄 檔案</button>
+                        <button class="tab-button active" data-tab="text">文字</button>
+                        <button class="tab-button" data-tab="url">網址</button>
+                        <button class="tab-button" data-tab="image">圖片</button>
+                        <button class="tab-button" data-tab="file">檔案</button>
                     </div>
                     <div id="tab-content">
                         <!-- Text Input -->
@@ -170,7 +171,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="post-type" class="label">生成形式</label>
+                    <label for="post-type" class="label">貼文生成形式</label>
                     <select id="post-type" class="select">
                         <option value="一般貼文">一般貼文</option>
                         <option value="廣告貼文">廣告貼文</option>
@@ -197,10 +198,10 @@
 
                 <div id="custom-style-wrapper" class="input-group hidden">
                     <label for="custom-style-input" class="label">自訂語調</label>
-                    <input type="text" id="custom-style-input" class="input" placeholder="例如：像海盜一樣說話">
+                    <input type="text" id="custom-style-input" class="input" placeholder="例如：像大媽一樣說話">
                 </div>
 
-                <button id="generate-btn" class="btn">✨ 開始生成</button>
+                <button id="generate-btn" class="btn">開始生成</button>
 
                  <div id="error-box">
                     <h3 class="font-bold">發生錯誤</h3>
@@ -210,7 +211,7 @@
 
             <!-- Right Column: Output -->
             <div class="card">
-                <h2 class="text-2xl font-bold mb-6">2. 生成結果</h2>
+                <h2 class="text-2xl font-bold mb-6">生成結果</h2>
                 <div id="result-container" class="space-y-6">
                     <div id="placeholder" class="text-center text-gray-500 py-20">
                         <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -222,15 +223,15 @@
                     </div>
                     <div id="output" class="hidden space-y-6">
                         <div>
-                            <h3 class="text-lg font-semibold mb-2">生成圖片</h3>
-                            <div id="image-output" class="flex justify-center items-center bg-gray-100 rounded-lg min-h-[200px]"></div>
-                        </div>
-                        <div>
                             <h3 class="text-lg font-semibold mb-2">生成文案</h3>
                             <div id="text-output" class="relative bg-gray-100 p-4 rounded-lg whitespace-pre-wrap min-h-[150px]">
                                 <button id="copy-btn" class="copy-button">複製</button>
                                 <p id="text-content"></p>
                             </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">生成圖片</h3>
+                            <div id="image-output" class="flex justify-center items-center bg-gray-100 rounded-lg min-h-[200px]"></div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -405,7 +406,7 @@
             } finally {
                 loadingIndicator.classList.add('hidden');
                 generateBtn.disabled = false;
-                generateBtn.textContent = '✨ 開始生成';
+                generateBtn.textContent = '開始生成';
             }
         }
         
@@ -415,13 +416,13 @@
 
             switch (activeTab) {
                 case 'text':
-                    content = `基於以下文字: "${textInput.value.trim()}"`;
+                    content = `基於以下文字:，並以此為靈感創作。"${textInput.value.trim()}"`;
                     break;
                 case 'url':
-                    content = `基於這個網址的內容 (請自行想像其內容): ${urlInput.value.trim()}`;
+                    content = `基於這個網址的內容，並以此為靈感創作。 ${urlInput.value.trim()}`;
                     break;
                 case 'file':
-                    content = `基於以下文件內容: "${uploadedFileContent}"`;
+                    content = `基於以下文件內容，並以此為靈感創作。 "${uploadedFileContent}"`;
                     break;
                 case 'image':
                     content = '請描述這張圖片，並以此為靈感創作。';
@@ -447,14 +448,14 @@
             const stylePrompt = style ? `請使用「${style}」的風格語調。` : '請使用最適合的風格語調。';
 
             const prompt = `
-                請扮演一位社群媒體行銷專家。
-                你的任務是根據我提供的資料，生成一份包含「圖片」和「文案」的社群媒體貼文。
+                請扮演一位30年經驗的社群媒體行銷文案專家。
+                你的任務是根據我提供的輸入資料，生成一份包含「圖片」和「文案」的社群媒體貼文。
 
-                ## 任務指示:
-                1.  **生成文案**: 創作一篇引人注目的「${postType}」文案。${stylePrompt} 文案應該包含相關的 hashtags。
-                2.  **生成圖片**: 創作一張與文案主題和風格相符的精美圖片。
+                任務指示:
+                1.生成文案: 創作一篇「${postType}」文案。文案內容符合${stylePrompt}的風格，約100-150個字，分段清楚（有句號即可換行），以正體中文為主 。
+                2.生成圖片: 與1生成的文案內容相符的示意圖片，寫實風格，無需要寫出文字。如果無法順利生成，請再生成一次。
 
-                ## 輸入資料:
+                輸入資料:
                 ${content}
 
                 請立即開始創作。
@@ -513,5 +514,7 @@
         }
 
     </script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
 </body>
 </html>
