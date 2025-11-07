@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.shortcuts import render
 from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -96,3 +97,6 @@ def debug_environment(request):
             "error": "獲取除錯資訊時發生嚴重錯誤",
             "details": str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def get_posting_helper_page(request):
+    return render(request, 'posting-helper.html')

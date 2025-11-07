@@ -110,7 +110,7 @@ ROOT_URLCONF = 'ai_service.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR.parent / 'frontend'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -139,41 +139,41 @@ DATABASES = {
 # 強制日誌 (DEBUGGING 500 ERRORS)
 # ==============================================================================
 # 強制將所有日誌 (包含 SQL 查詢) 輸出到主控台
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',  # 捕捉 DEBUG 或更高等級的日誌
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-    },
-    'root': {
-        # 將所有未被捕獲的日誌都送到 console
-        'handlers': ['console'],
-        'level': 'DEBUG',
-    },
-    'loggers': {
-        'django': {
-            # 捕獲所有 Django 核心的日誌
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'django.db.backends': {
-            # 這是關鍵：強迫 Django 印出它執行的每一條 SQL 查詢
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-}
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'simple': {
+#             'format': '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'level': 'DEBUG',  # 捕捉 DEBUG 或更高等級的日誌
+#             'class': 'logging.StreamHandler',
+#             'formatter': 'simple',
+#         },
+#     },
+#     'root': {
+#         # 將所有未被捕獲的日誌都送到 console
+#         'handlers': ['console'],
+#         'level': 'DEBUG',
+#     },
+#     'loggers': {
+#         'django': {
+#             # 捕獲所有 Django 核心的日誌
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#             'propagate': False,
+#         },
+#         'django.db.backends': {
+#             # 這是關鍵：強迫 Django 印出它執行的每一條 SQL 查詢
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#             'propagate': False,
+#         },
+#     },
+# }
 # ==============================================================================
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

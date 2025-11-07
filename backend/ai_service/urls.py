@@ -19,6 +19,7 @@ from django.urls import path, include
 from . import views
 
 urlpatterns = [
+    path('', views.get_posting_helper_page, name='get-posting-helper-page'),
     path('admin/', admin.site.urls),
     path('line/', include('line_bot.urls')),
     path('api/users/<str:username>/', views.get_user_by_username, name='get-user-by-username'),
