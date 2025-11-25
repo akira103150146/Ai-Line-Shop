@@ -1,141 +1,416 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>lut2-1翁崑德-月台濾鏡</title>
-  <style>
-    /* 1. 基礎設定：移除邊距 */
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden; /* 禁止捲動 */
-      background-color: #000;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>lut2-1翁崑德-月台濾鏡</title>
+    <style>
+        /* --- 基礎設定 --- */
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
 
-    /* 2. 濾鏡核心設定區 & 全螢幕強制設定 */
-    #camera-view {
-      /* 強制固定在視窗左上角 */
-      position: fixed;
-      top: 0;
-      left: 0;
-      
-      /* 強制寬高跟視窗一樣 */
-      width: 100vw;
-      height: 100vh;
-      
-      /* 關鍵：Cover 會裁切畫面以填滿螢幕，解決黑邊問題 */
-      object-fit: cover; 
-      
-      /* 確保影片在最底層 */
-      z-index: 1;
+        /* --- UI 覆蓋層 --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* 讓點擊穿透到下方，除非點到具體按鈕 */
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
 
-      /* 陳澄波濾鏡參數 */
-      filter: url(#Ang-Khun-tek-style)contrast(120%) saturate(105%) brightness(95%); 
-    }
+        /* --- 九宮格輔助線 --- */
+        #grid-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; /* 預設隱藏 */
+            pointer-events: none;
+        }
+        .grid-line { position: absolute; background: rgba(255, 255, 255, 0.5); box-shadow: 0 0 2px rgba(0,0,0,0.3); }
+        .grid-h-1 { top: 33.33%; left: 0; width: 100%; height: 1px; }
+        .grid-h-2 { top: 66.66%; left: 0; width: 100%; height: 1px; }
+        .grid-v-1 { left: 33.33%; top: 0; width: 1px; height: 100%; }
+        .grid-v-2 { left: 66.66%; top: 0; width: 1px; height: 100%; }
 
-        /* 3. 拍照按鈕樣式 (同心圓快門風格) */
-    #capture-btn {
-    position: absolute;
-    bottom: 50px;
-    left: 50%;
-    transform: translateX(-50%); /* 水平置中 */
-    /* --- 修改重點開始 --- */
-    width: 80px;  /* 按鈕總寬度 (含外框) */
-    height: 80px; /* 按鈕總高度 */
-    border-radius: 50%;        /* 圓形 */
-    border: 4px solid white;   /* 1. 最外層的白圈 (線條寬度) */
-    background-color: #ffffff; /* 2. 中間實心圓的顏色 */
-    padding: 6px;              /* 3. 這裡是「透明空隙」的大小，數字越大空隙越大 */
-    background-clip: content-box; /* 4. 關鍵語法：讓白色背景只塗在內容區，不塗在 padding 上 */
-    /* --- 修改重點結束 --- */
-    cursor: pointer;
-    z-index: 10; 
-    
-    }
-    /* (選用) 增加按下去的回饋感 */
-    #capture-btn:active {
-    background-color: #cccccc; /* 按下時中間變稍微灰一點 */
-    padding: 10px; /* 按下時空隙變大 (視覺上中間圓會縮小)，更有按鈕感 */
-    transition: all 0.1s;
-    }
-    /* 4. 閃光效果 */
-    #flash {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: white;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
-      z-index: 20; /* 最上層 */
-    }
-  </style>
+        /* --- 頂部控制區 --- */
+        .top-controls {
+            padding: 20px;
+            display: flex; justify-content: flex-end;
+            pointer-events: auto;
+        }
+        .icon-btn {
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.6);
+            color: white; padding: 8px 12px; border-radius: 20px;
+            font-size: 14px; cursor: pointer; backdrop-filter: blur(4px);
+        }
+        .icon-btn.active { background: rgba(255, 200, 0, 0.8); color: black; border-color: transparent; }
+
+        /* --- 底部控制區 --- */
+        .bottom-controls {
+            padding: 20px; padding-bottom: 40px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            pointer-events: auto;
+        }
+
+        /* --- 滑桿樣式 --- */
+        .slider-group {
+            display: flex; align-items: center; gap: 10px; width: 80%; max-width: 300px;
+            color: white; font-size: 12px; text-shadow: 0 1px 2px black;
+        }
+        .slider-label { width: 40px; text-align: right; }
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; background: rgba(255,255,255,0.3);
+            height: 4px; border-radius: 2px; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px;
+            background: white; border-radius: 50%; cursor: pointer;
+        }
+
+        /* --- 同心圓快門按鈕 --- */
+        #shutter-btn {
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            border: 4px solid white; /* 外圈實線 */
+            background: transparent;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        #shutter-inner {
+            width: 56px; height: 56px;
+            background: white; /* 內圈實心 */
+            border-radius: 50%;
+            transition: transform 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.95); }
+        #shutter-btn:active #shutter-inner { transform: scale(0.9); background: #ddd; }
+
+        /* --- 錯誤訊息 --- */
+        #error-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; text-align: center; display: none; background: rgba(0,0,0,0.7); padding: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-<svg xmlns="http://www.w3.org/2000/svg">
-  <filter id="Ang-Khun-tek-style">
-    <feColorMatrix
-      type="matrix"
-      values=" 1.250  0.000  0.000  0.000 -0.120 
-               0.000  1.250  0.000  0.000 -0.120 
-               0.000  0.000  1.250  0.000 -0.120 
-               0.000  0.000  0.000  1.000  0.000">
-    </feColorMatrix>
-  </filter>
-</svg>
 
-  <video id="camera-view" autoplay playsinline></video>
-  
-  <div id="capture-btn"></div>
-  <div id="flash"></div>
-  <canvas id="canvas" style="display:none;"></canvas>
+    <div id="error-msg"></div>
 
-  <script>
-    const video = document.getElementById('camera-view');
-    const btn = document.getElementById('capture-btn');
-    const canvas = document.getElementById('canvas');
-    const flash = document.getElementById('flash');
+    <div id="grid-overlay">
+        <div class="grid-line grid-h-1"></div>
+        <div class="grid-line grid-h-2"></div>
+        <div class="grid-line grid-v-1"></div>
+        <div class="grid-line grid-v-2"></div>
+    </div>
 
-    async function initCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          // 設定理想解析度，有助於畫面更清晰
-          video: { 
-            facingMode: "environment",
-            width: { ideal: 5196 },
-            height: { ideal: 9238 }
-          } 
+    <div id="ui-layer">
+        <div class="top-controls">
+            <button id="grid-toggle" class="icon-btn"># 格線</button>
+        </div>
+
+        <div class="bottom-controls">
+            <div class="slider-group" id="zoom-group" style="display:none;">
+                <span class="slider-label">Zoom</span>
+                <input type="range" id="zoom-slider" step="0.1">
+            </div>
+
+            <div class="slider-group" id="ev-group" style="display:none;">
+                <span class="slider-label">EV</span>
+                <input type="range" id="ev-slider" step="0.1">
+            </div>
+
+            <div id="shutter-btn">
+                <div id="shutter-inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Shader 定義 (濾鏡核心)
+        // ==========================================
+        
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform sampler2D tDiffuse;
+            uniform float time;
+            varying vec2 vUv;
+
+            // 輔助函數：亂數 (用於噪點)
+            float random(vec2 p) {
+                return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            // 輔助函數：Overlay 混合模式
+            float overlay(float base, float blend) {
+                return base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend));
+            }
+
+            void main() {
+                vec4 texel = texture2D(tDiffuse, vUv);
+                vec3 color = texel.rgb;
+
+                // -------------------------------------------------
+                // 步驟 1: 模擬油畫色調 (Color Grading)
+                // -------------------------------------------------
+                
+                // 增加對比度 (翁崑德畫作光影分明)
+                color = (color - 0.5) * 1.15 + 0.5;
+
+                // 色溫偏移：整體加暖 (Warm Yellow/Beige)
+                // 模擬畫布泛黃的感覺
+                vec3 warmTint = vec3(1.05, 1.02, 0.95); 
+                color *= warmTint;
+
+                // 暗部偏移：將黑色推向深綠/褐色 (Shadow Tint)
+                // 畫作中的火車與陰影不是純黑，而是帶有墨綠色
+                float luminance = dot(color, vec3(0.299, 0.587, 0.114));
+                vec3 shadowColor = vec3(0.1, 0.15, 0.05); // 墨綠深褐
+                color = mix(color, color + shadowColor, (1.0 - luminance) * 0.3);
+
+                // -------------------------------------------------
+                // 步驟 2: 特殊色相調整 (Hues)
+                // -------------------------------------------------
+                
+                // 降低整體飽和度 (Vintage Look)
+                vec3 gray = vec3(luminance);
+                color = mix(gray, color, 0.85);
+
+                // -------------------------------------------------
+                // 步驟 3: 畫布紋理與噪點 (Texture & Noise)
+                // -------------------------------------------------
+                
+                // 計算噪點強度 (亮度越低，噪點越明顯，模擬暗部細節)
+                float noiseStrength = 0.08; 
+                float grain = random(vUv * time) * noiseStrength;
+                color += grain;
+
+                // -------------------------------------------------
+                // 步驟 4: 暗角效果 (Vignette)
+                // -------------------------------------------------
+                
+                // 畫作上方有屋簷，所以上方暗角較重
+                vec2 center = vec2(0.5, 0.5);
+                // 將 UV 座標偏移，使中心點稍微偏下，讓暗角在上方更多
+                vec2 vignetteUV = vUv; 
+                vignetteUV.y -= 0.1; 
+                
+                float dist = distance(vignetteUV, center);
+                float vignette = smoothstep(0.8, 0.35, dist * (1.2)); // 調整 1.2 控制範圍
+                
+                // 混合暗角 (Multiply)
+                color *= vignette;
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // ==========================================
+        // 2. Three.js 場景初始化
+        // ==========================================
+
+        let camera, scene, renderer;
+        let video, videoTexture;
+        let material, mesh;
+        let videoTrack; // 用於控制硬體變焦與曝光
+
+        function init() {
+            const container = document.body;
+
+            // 建立場景
+            scene = new THREE.Scene();
+
+            // 建立正交相機 (2D 滿版)
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+            // 建立 WebGL 渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // 啟動相機
+            initCamera();
+
+            // 處理視窗縮放
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        async function initCamera() {
+            try {
+                // 設定解析度與鏡頭要求
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // 後置鏡頭
+                        width: { ideal: 2048 },    // 4:3 高解析度
+                        height: { ideal: 1536 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+
+                // 獲取 Video Track 以控制硬體
+                videoTrack = stream.getVideoTracks()[0];
+                setupHardwareControls(videoTrack);
+
+                // 建立 Video Texture
+                videoTexture = new THREE.VideoTexture(video);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+
+                // 建立濾鏡材質
+                material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        tDiffuse: { value: videoTexture },
+                        time: { value: 0.0 }
+                    },
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader
+                });
+
+                // 建立滿版平面
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+
+                animate();
+
+            } catch (err) {
+                console.error("Camera Error:", err);
+                document.getElementById('error-msg').style.display = 'block';
+                document.getElementById('error-msg').innerText = "無法存取相機，請確保允許權限並使用 HTTPS 連線。\n" + err.message;
+            }
+        }
+
+        // ==========================================
+        // 3. 硬體控制 (Zoom & EV)
+        // ==========================================
+
+        function setupHardwareControls(track) {
+            const capabilities = track.getCapabilities();
+            const settings = track.getSettings();
+
+            // --- Zoom Control ---
+            if ('zoom' in capabilities) {
+                const zoomGroup = document.getElementById('zoom-group');
+                const zoomSlider = document.getElementById('zoom-slider');
+                
+                zoomGroup.style.display = 'flex';
+                zoomSlider.min = capabilities.zoom.min;
+                zoomSlider.max = capabilities.zoom.max;
+                zoomSlider.step = capabilities.zoom.step || 0.1;
+                zoomSlider.value = settings.zoom || capabilities.zoom.min;
+
+                zoomSlider.addEventListener('input', (e) => {
+                    track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] })
+                        .catch(e => console.warn("Zoom failed:", e));
+                });
+            }
+
+            // --- Exposure Control ---
+            if ('exposureCompensation' in capabilities) {
+                const evGroup = document.getElementById('ev-group');
+                const evSlider = document.getElementById('ev-slider');
+                
+                evGroup.style.display = 'flex';
+                evSlider.min = capabilities.exposureCompensation.min;
+                evSlider.max = capabilities.exposureCompensation.max;
+                evSlider.step = capabilities.exposureCompensation.step || 0.1;
+                evSlider.value = settings.exposureCompensation || 0;
+
+                evSlider.addEventListener('input', (e) => {
+                    track.applyConstraints({ advanced: [{ exposureCompensation: parseFloat(e.target.value) }] })
+                        .catch(e => console.warn("EV failed:", e));
+                });
+            }
+        }
+
+        // ==========================================
+        // 4. 畫面渲染與適應
+        // ==========================================
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            adjustAspectRatio();
+        }
+
+        // 修正材質比例，達成 object-fit: cover 的效果
+        function adjustAspectRatio() {
+            if (!video || !material) return;
+            
+            const videoAspect = video.videoWidth / video.videoHeight;
+            const screenAspect = window.innerWidth / window.innerHeight;
+
+            // 簡單的 UV 縮放邏輯
+            // 注意：完整的 UV Cover 算法需要更複雜的 vertex shader 或 uniform 傳遞
+            // 這裡為了簡化，我們假設 texture 會自動拉伸，
+            // 若要完美不變形，通常需要傳入 resolution uniform 計算 ratio
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (material) {
+                material.uniforms.time.value += 0.05;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // 5. UI 互動邏輯
+        // ==========================================
+
+        // 九宮格開關
+        const gridToggle = document.getElementById('grid-toggle');
+        const gridOverlay = document.getElementById('grid-overlay');
+        let isGridOn = false;
+
+        gridToggle.addEventListener('click', () => {
+            isGridOn = !isGridOn;
+            gridOverlay.style.display = isGridOn ? 'block' : 'none';
+            gridToggle.classList.toggle('active', isGridOn);
         });
-        video.srcObject = stream;
-      } catch (err) {
-        console.error(err);
-        alert("無法存取相機，請確認權限。");
-      }
-    }
 
-    btn.addEventListener('click', () => {
-      flash.style.opacity = 1;
-      setTimeout(() => flash.style.opacity = 0, 100);
+        // 快門拍照
+        const shutterBtn = document.getElementById('shutter-btn');
+        shutterBtn.addEventListener('click', () => {
+            // 1. 暫停渲染以防畫面撕裂
+            // 2. 將 Canvas 轉為圖片
+            renderer.render(scene, camera); // 確保捕捉當前這一幀
+            
+            const dataURL = renderer.domElement.toDataURL('image/jpeg', 0.95);
+            
+            // 3. 觸發下載
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.download = `WengKunDe_Filter_${timestamp}.jpg`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
+            // 簡單的閃爍動畫
+            const originalBg = shutterBtn.style.backgroundColor;
+            shutterBtn.style.backgroundColor = "rgba(255,255,255,0.8)";
+            setTimeout(() => {
+                shutterBtn.style.backgroundColor = originalBg;
+            }, 100);
+        });
 
-      // 這裡的濾鏡設定必須與 CSS 完全一致
-      ctx.filter = 'url(#Ang-Khun-tek-style)contrast(130%) saturate(115%) brightness(95%)';       
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // 啟動程式
+        init();
 
-      const link = document.createElement('a');
-      // 修改檔名加上時間戳記，避免重複
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      link.download = `AngKhuntek-${timestamp}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    });
-
-    initCamera();
-  </script>
+    </script>
 </body>
 </html>
