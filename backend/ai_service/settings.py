@@ -89,8 +89,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles', # Django 內建的靜態檔案管理
-    'line_bot',
     'rest_framework', # 我們 API 功能所需的套件
+    'line_bot',
+    'lut2',
 ]
 
 MIDDLEWARE = [
