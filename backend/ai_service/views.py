@@ -96,3 +96,18 @@ def debug_environment(request):
             "error": "獲取除錯資訊時發生嚴重錯誤",
             "details": str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def get_posting_helper_page(request):
+    return render(request, 'posting-helper.html')
+
+def get_ang_khun_tek_page(request):
+    return render(request, 'lut2/Ang-Khun-tek.html')
+
+def get_chen_cheng_po_lumbermill(request):
+    return render(request, 'lut2/Chen-Cheng-Po（lumbermill).html')
+
+def get_chen_cheng_po_roundaout(request):
+    return render(request, 'lut2/Chen-Cheng-Po（roundabout).html')
+
+def get_fang_qing_mian(request):
+    return render(request, 'lut2/Fang-Qing-Mian.html')

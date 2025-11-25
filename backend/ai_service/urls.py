@@ -19,6 +19,11 @@ from django.urls import path, include
 from . import views
 
 urlpatterns = [
+    path('', views.get_posting_helper_page, name='get-posting-helper-page'),
+    path('lut2/ang-khun-tek', views.get_ang_khun_tek_page, name='get-ang-khun-tek-page'),
+    path('lut2/chen-cheng-po-lumbermill', views.get_chen_cheng_po_lumbermill, name='get-chen-cheng-po-lumbermill'),
+    path('lut2/chen-cheng-po-roundaout', views.get_chen_cheng_po_roundaout, name='get-chen-cheng-po-roundaout'),
+    path('lut2/fang-qing-mian', views.get_fang_qing_mian, name='get-fang-qing-mian'),
     path('admin/', admin.site.urls),
     path('line/', include('line_bot.urls')),
     path('api/users/<str:username>/', views.get_user_by_username, name='get-user-by-username'),
