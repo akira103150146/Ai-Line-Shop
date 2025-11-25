@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>lut2-2方慶綿-菸酒公賣局濾鏡</title>
+    <style>
+        /* --- 基礎設定 --- */
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+
+        /* --- UI 覆蓋層 --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* 讓點擊穿透到下方 */
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        /* --- 九宮格輔助線 --- */
+        #grid-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; /* 預設隱藏 */
+            pointer-events: none;
+        }
+        .grid-line { position: absolute; background: rgba(255, 255, 255, 0.4); box-shadow: 0 0 1px rgba(0,0,0,0.5); }
+        .grid-h-1 { top: 33.33%; left: 0; width: 100%; height: 1px; }
+        .grid-h-2 { top: 66.66%; left: 0; width: 100%; height: 1px; }
+        .grid-v-1 { left: 33.33%; top: 0; width: 1px; height: 100%; }
+        .grid-v-2 { left: 66.66%; top: 0; width: 1px; height: 100%; }
+
+        /* --- 頂部控制區 --- */
+        .top-controls {
+            padding: 20px;
+            display: flex; justify-content: flex-end;
+            pointer-events: auto;
+        }
+        .icon-btn {
+            background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255,255,255,0.5);
+            color: white; padding: 8px 12px; border-radius: 20px;
+            font-size: 14px; cursor: pointer; backdrop-filter: blur(2px);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .icon-btn.active { background: rgba(255, 255, 255, 0.9); color: black; border-color: transparent; }
+
+        /* --- 底部控制區 --- */
+        .bottom-controls {
+            padding: 20px; padding-bottom: 40px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            pointer-events: auto;
+        }
+
+        /* --- 滑桿樣式 (黑白風格) --- */
+        .slider-group {
+            display: flex; align-items: center; gap: 10px; width: 80%; max-width: 300px;
+            color: #eee; font-size: 12px; text-shadow: 0 1px 2px black; font-family: monospace;
+        }
+        .slider-label { width: 40px; text-align: right; }
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; background: rgba(255,255,255,0.2);
+            height: 2px; border-radius: 1px; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            background: white; border-radius: 50%; cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.5);
+        }
+
+        /* --- 同心圓快門按鈕 --- */
+        #shutter-btn {
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            border: 4px solid #eee; /* 外圈 */
+            background: transparent;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        #shutter-inner {
+            width: 56px; height: 56px;
+            background: #eee; /* 內圈 */
+            border-radius: 50%;
+            transition: transform 0.1s, background-color 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.95); }
+        #shutter-btn:active #shutter-inner { transform: scale(0.9); background: #ccc; }
+
+        /* --- 錯誤訊息 --- */
+        #error-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; text-align: center; display: none; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid white;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="error-msg"></div>
+
+    <div id="grid-overlay">
+        <div class="grid-line grid-h-1"></div>
+        <div class="grid-line grid-h-2"></div>
+        <div class="grid-line grid-v-1"></div>
+        <div class="grid-line grid-v-2"></div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="top-controls">
+            <button id="grid-toggle" class="icon-btn"># 格線</button>
+        </div>
+
+        <div class="bottom-controls">
+            <div class="slider-group" id="zoom-group" style="display:none;">
+                <span class="slider-label">ZOOM</span>
+                <input type="range" id="zoom-slider" step="0.1">
+            </div>
+
+            <div class="slider-group" id="ev-group" style="display:none;">
+                <span class="slider-label">EV</span>
+                <input type="range" id="ev-slider" step="0.1">
+            </div>
+
+            <div id="shutter-btn">
+                <div id="shutter-inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Shader 定義 (方慶綿風格核心)
+        // ==========================================
+        
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform sampler2D tDiffuse;
+            uniform float time;
+            varying vec2 vUv;
+
+            // 輔助函數：亂數 (用於微細顆粒)
+            float random(vec2 p) {
+                return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            void main() {
+                vec4 texel = texture2D(tDiffuse, vUv);
+                vec3 color = texel.rgb;
+
+                // -------------------------------------------------
+                // 步驟 1: 純黑白轉換 (Luminance)
+                // -------------------------------------------------
+                // 使用 Rec.709 標準權重轉換為灰階
+                float gray = dot(color, vec3(0.299, 0.587, 0.114));
+
+                // -------------------------------------------------
+                // 步驟 2: 色階與對比度重塑 (Tone Mapping)
+                // -------------------------------------------------
+                
+                // 方慶綿的照片特點：
+                // 1. 白色很亮（雲層、天空），黑色很深（岩石陰影）。
+                // 2. 中間調層次分明，不像現代照片那麼平。
+
+                // 模擬 S-Curve 曲線來增加反差
+                // 先稍微壓低 Gamma (1.1) 讓暗部更紮實 (Solid Blacks)
+                gray = pow(gray, 1.1);
+
+                // 強制拉開對比度 (Contrast Boost)
+                // 係數 1.3 讓灰階變得比較"硬" (Hard)
+                gray = (gray - 0.5) * 1.3 + 0.5;
+
+                // 修正範圍，確保不超過 0~1
+                gray = clamp(gray, 0.0, 1.0);
+
+                // -------------------------------------------------
+                // 步驟 3: 模擬銀鹽顆粒 (Silver Halide Grain)
+                // -------------------------------------------------
+                
+                // 不同於油畫的粗糙，這是一種高解析度的細微顆粒
+                float noiseStrength = 0.05; 
+                
+                // 生成動態噪點，範圍在 -0.5 ~ 0.5 之間
+                float grain = (random(vUv * time * 2.0) - 0.5) * noiseStrength;
+                
+                // 將噪點疊加到灰階上
+                gray += grain;
+
+                // -------------------------------------------------
+                // 步驟 4: 光學暗角 (Optical Vignette)
+                // -------------------------------------------------
+                
+                // 模擬老式大畫幅鏡頭的邊緣失光
+                vec2 center = vec2(0.5, 0.5);
+                float dist = distance(vUv, center);
+                
+                // smoothstep 創造平滑的暗角過渡
+                // 0.75 開始變暗，到邊緣明顯壓黑
+                float vignette = smoothstep(0.8, 0.3, dist);
+                
+                gray *= vignette;
+
+                // -------------------------------------------------
+                // 輸出：純黑白 (R=G=B)
+                // -------------------------------------------------
+                gl_FragColor = vec4(vec3(gray), 1.0);
+            }
+        `;
+
+        // ==========================================
+        // 2. Three.js 場景初始化 (通用邏輯)
+        // ==========================================
+
+        let camera, scene, renderer;
+        let video, videoTexture;
+        let material, mesh;
+        let videoTrack; 
+
+        function init() {
+            const container = document.body;
+
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            initCamera();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        async function initCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', 
+                        width: { ideal: 2048 },    
+                        height: { ideal: 1536 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+
+                videoTrack = stream.getVideoTracks()[0];
+                setupHardwareControls(videoTrack);
+
+                videoTexture = new THREE.VideoTexture(video);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+
+                material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        tDiffuse: { value: videoTexture },
+                        time: { value: 0.0 }
+                    },
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader
+                });
+
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+
+                animate();
+
+            } catch (err) {
+                console.error("Camera Error:", err);
+                document.getElementById('error-msg').style.display = 'block';
+                document.getElementById('error-msg').innerText = "無法存取相機，請確保使用 HTTPS 或本機測試。\n" + err.message;
+            }
+        }
+
+        // ==========================================
+        // 3. 硬體控制 (Zoom & EV) - 與前版相同
+        // ==========================================
+
+        function setupHardwareControls(track) {
+            const capabilities = track.getCapabilities();
+            const settings = track.getSettings();
+
+            // --- Zoom ---
+            if ('zoom' in capabilities) {
+                const zoomGroup = document.getElementById('zoom-group');
+                const zoomSlider = document.getElementById('zoom-slider');
+                zoomGroup.style.display = 'flex';
+                zoomSlider.min = capabilities.zoom.min;
+                zoomSlider.max = capabilities.zoom.max;
+                zoomSlider.step = capabilities.zoom.step || 0.1;
+                zoomSlider.value = settings.zoom || capabilities.zoom.min;
+                zoomSlider.addEventListener('input', (e) => {
+                    track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] })
+                        .catch(e => console.warn("Zoom failed:", e));
+                });
+            }
+
+            // --- EV ---
+            if ('exposureCompensation' in capabilities) {
+                const evGroup = document.getElementById('ev-group');
+                const evSlider = document.getElementById('ev-slider');
+                evGroup.style.display = 'flex';
+                evSlider.min = capabilities.exposureCompensation.min;
+                evSlider.max = capabilities.exposureCompensation.max;
+                evSlider.step = capabilities.exposureCompensation.step || 0.1;
+                evSlider.value = settings.exposureCompensation || 0;
+                evSlider.addEventListener('input', (e) => {
+                    track.applyConstraints({ advanced: [{ exposureCompensation: parseFloat(e.target.value) }] })
+                        .catch(e => console.warn("EV failed:", e));
+                });
+            }
+        }
+
+        // ==========================================
+        // 4. 渲染循環
+        // ==========================================
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (material) {
+                material.uniforms.time.value += 0.05;
+            }
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // 5. UI 互動 (九宮格 & 拍照)
+        // ==========================================
+
+        // Grid
+        const gridToggle = document.getElementById('grid-toggle');
+        const gridOverlay = document.getElementById('grid-overlay');
+        let isGridOn = false;
+
+        gridToggle.addEventListener('click', () => {
+            isGridOn = !isGridOn;
+            gridOverlay.style.display = isGridOn ? 'block' : 'none';
+            gridToggle.classList.toggle('active', isGridOn);
+        });
+
+        // Shutter
+        const shutterBtn = document.getElementById('shutter-btn');
+        shutterBtn.addEventListener('click', () => {
+            renderer.render(scene, camera); 
+            const dataURL = renderer.domElement.toDataURL('image/jpeg', 0.95);
+            
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            // 檔名改為 FangQingMian
+            link.download = `FangQingMian_Filter_${timestamp}.jpg`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            const originalBg = shutterBtn.querySelector('#shutter-inner').style.backgroundColor;
+            shutterBtn.querySelector('#shutter-inner').style.backgroundColor = "#333";
+            setTimeout(() => {
+                shutterBtn.querySelector('#shutter-inner').style.backgroundColor = originalBg;
+            }, 100);
+        });
+
+        init();
+
+    </script>
+</body>
+</html>
