@@ -166,6 +166,7 @@
         const confirmBtn = document.getElementById('confirm-btn');
 
         let currentOrientation = 'portrait';
+        let selectedFile = null; // 儲存選中的文件
 
         // 1. 切換尺寸 (直式/橫式)
         function setOrientation(type) {
@@ -215,6 +216,7 @@
             const file = event.target.files[0];
             
             if (file) {
+                selectedFile = file; // 保存文件
                 const reader = new FileReader();
                 
                 // 讀取前狀態
@@ -250,6 +252,115 @@
                 reader.readAsDataURL(file);
             }
         }
+
+        // 4. 處理圖片上傳
+        async function uploadImage() {
+            if (!selectedFile) {
+                statusText.innerText = "ERROR: NO FILE SELECTED";
+                return;
+            }
+
+            // 更新狀態
+            statusText.innerText = "UPLOADING...";
+            statusText.classList.add('animate-pulse');
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = '0.5';
+
+            try {
+                // 方式1：使用 FormData 上傳文件（推薦）
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('orientation', currentOrientation);
+
+                const response = await fetch('/lut2/upload-image', {
+                    method: 'POST',
+                    body: formData,
+                    // 注意：使用 FormData 時不要設定 Content-Type，瀏覽器會自動設定
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    statusText.innerText = "UPLOAD SUCCESS!";
+                    statusText.classList.remove('animate-pulse');
+                    statusText.style.color = '#CFFF04';
+                    
+                    // 可以顯示成功訊息或重定向
+                    setTimeout(() => {
+                        alert('圖片上傳成功！\n圖片 ID: ' + result.id);
+                        // 可選：重置表單
+                        // resetForm();
+                    }, 500);
+                } else {
+                    throw new Error(result.message || '上傳失敗');
+                }
+            } catch (error) {
+                statusText.innerText = `ERROR: ${error.message}`;
+                statusText.style.color = '#ff4444';
+                console.error('Upload error:', error);
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.style.opacity = '1';
+            }
+        }
+
+        // 4b. 使用 Base64 上傳（備選方案）
+        async function uploadImageBase64() {
+            if (!selectedFile) {
+                statusText.innerText = "ERROR: NO FILE SELECTED";
+                return;
+            }
+
+            statusText.innerText = "UPLOADING (BASE64)...";
+            statusText.classList.add('animate-pulse');
+            confirmBtn.disabled = true;
+
+            try {
+                // 讀取文件為 base64
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const base64Data = e.target.result; // 包含 data:image/...;base64, 前綴
+                    
+                    const response = await fetch('/lut2/upload-image', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            image_base64: base64Data,
+                            orientation: currentOrientation,
+                            filename: selectedFile.name
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        statusText.innerText = "UPLOAD SUCCESS! (BASE64)";
+                        statusText.classList.remove('animate-pulse');
+                        statusText.style.color = '#CFFF04';
+                        alert('圖片上傳成功！（Base64 格式）\n圖片 ID: ' + result.id);
+                    } else {
+                        throw new Error(result.message || '上傳失敗');
+                    }
+                };
+                
+                reader.onerror = function() {
+                    throw new Error('讀取文件失敗');
+                };
+                
+                reader.readAsDataURL(selectedFile);
+            } catch (error) {
+                statusText.innerText = `ERROR: ${error.message}`;
+                statusText.style.color = '#ff4444';
+                console.error('Upload error:', error);
+            } finally {
+                confirmBtn.disabled = false;
+            }
+        }
+
+        // 綁定確認按鈕點擊事件
+        confirmBtn.addEventListener('click', uploadImage);
     </script>
 </body>
 </html>

@@ -16,6 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from . import views
 
 urlpatterns = [
@@ -26,3 +28,8 @@ urlpatterns = [
     path('api/users/<str:username>/', views.get_user_by_username, name='get-user-by-username'),
     # path('api/debug/',views.debug_environment, name='debug-environment')
 ]
+
+# 在開發環境中提供媒體文件服務
+# 注意：在生產環境中，應該使用 Web 服務器（如 Nginx）來提供靜態和媒體文件
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

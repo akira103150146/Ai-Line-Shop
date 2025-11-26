@@ -219,11 +219,24 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 設定 WhiteNoise 為靜態檔案的儲存後端
+# Django 5.2+ 需要同時設定 default 和 staticfiles
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+# ==============================================================================
+
+# ==============================================================================
+# Media files (User uploaded files)
+# ==============================================================================
+# 用戶上傳的媒體檔案（圖片、文件等）的儲存位置
+MEDIA_ROOT = BASE_DIR / "media"
+# 媒體檔案的 URL 前綴
+MEDIA_URL = '/media/'
 # ==============================================================================
 
 
