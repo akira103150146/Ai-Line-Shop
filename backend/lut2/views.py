@@ -29,6 +29,35 @@ def get_upload_page(request):
     return render(request, 'lut2/upload.html')
 
 
+def get_gallery_page(request):
+    """顯示畫廊頁面，從資料庫載入上傳圖片"""
+    images = []
+    uploaded_images = UploadedImage.objects.order_by('-created_at')
+    
+    for item in uploaded_images:
+        image_url = item.get_image_url()
+        if not image_url and item.image_base64:
+            image_url = item.get_base64_data_uri()
+        
+        if not image_url:
+            continue
+        
+        images.append({
+            "url": image_url,
+            "type": item.orientation or 'portrait',
+            "id": f"KAGI-{item.id:04d}"
+        })
+    
+    # 確保 images_json 總是有效的 JSON 字符串（即使是空數組）
+    images_json = json.dumps(images, ensure_ascii=False)
+    
+    context = {
+        "images_json": images_json,
+        "has_images": len(images) > 0
+    }
+    return render(request, 'lut2/gallery.html', context)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def upload_image(request):

@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KAGI CITY VISION - 數位畫廊</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <!-- Google Fonts (Optional for better sans-serif) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap"
+        rel="stylesheet">
 
     <style>
         body {
@@ -30,55 +33,79 @@
 
         /* 跑馬燈動畫 */
         @keyframes scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-33.33%); } /* 移動 1/3 (因為有3組) */
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-33.33%);
+            }
+
+            /* 移動 1/3 (因為有3組) */
         }
-        
+
         .animate-scroll {
             display: flex;
             animation: scroll 40s linear infinite;
             width: max-content;
         }
-        
+
         .marquee-wrapper:hover .animate-scroll {
             animation-play-state: paused;
         }
 
         /* 旋轉動畫 */
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
+
         .animate-spin-slow {
             animation: spin 3s linear infinite;
         }
-        
+
         /* 自定義濾鏡 */
         .filter-custom {
             filter: contrast(1.1) grayscale(0.2);
             transition: all 0.5s;
         }
+
         .group:hover .filter-custom {
             filter: grayscale(0);
         }
     </style>
+    <script id="initial-images-data">
+        {% if has_images %}
+        window.INITIAL_IMAGES = {{ images_json | safe }};
+        {% else %}
+        window.INITIAL_IMAGES = [];
+        {% endif %}
+    </script>
 </head>
+
 <body class="min-h-screen relative selection:bg-[#CFFF04] selection:text-black">
 
     <!-- 背景裝飾：模擬海報中的像素雜訊感 -->
-    <div class="absolute inset-0 z-0 opacity-20 pointer-events-none" 
-         style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px;">
+    <div class="absolute inset-0 z-0 opacity-20 pointer-events-none"
+        style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px;">
     </div>
 
     <!-- 頂部標題列 -->
-    <header class="relative z-20 bg-black/80 backdrop-blur-md border-b border-[#333] py-4 px-6 flex justify-between items-center">
+    <header
+        class="relative z-20 bg-black/80 backdrop-blur-md border-b border-[#333] py-4 px-6 flex justify-between items-center">
         <div class="flex items-center gap-4">
             <!-- Logo 區塊 -->
             <div class="bg-[#CFFF04] text-black p-2 border border-white">
                 <i data-lucide="zap" width="28" height="28" stroke-width="2.5"></i>
             </div>
             <div>
-                <h1 class="text-3xl font-black tracking-tighter text-white italic" style="text-shadow: 2px 2px 0px #CFFF04;">
+                <h1 class="text-3xl font-black tracking-tighter text-white italic"
+                    style="text-shadow: 2px 2px 0px #CFFF04;">
                     <span class="text-[#CFFF04]">K A G I</span> L U T S
                 </h1>
                 <p class="text-xs text-[#CFFF04] font-bold tracking-[0.3em] uppercase mt-1">
@@ -86,9 +113,10 @@
                 </p>
             </div>
         </div>
-        
+
         <!-- 右側狀態列 -->
-        <div class="hidden md:flex items-center gap-2 px-4 py-2 border border-[#333] bg-[#000] text-xs font-mono text-[#CFFF04]">
+        <div
+            class="hidden md:flex items-center gap-2 px-4 py-2 border border-[#333] bg-[#000] text-xs font-mono text-[#CFFF04]">
             <span class="w-2 h-2 bg-[#CFFF04] rounded-full animate-pulse"></span>
             LIVE_FEED_ONLINE
         </div>
@@ -96,33 +124,50 @@
 
     <!-- 主要展示區 (跑馬燈) -->
     <main class="relative z-10 flex flex-col justify-center h-[calc(100vh-90px)] overflow-hidden">
-        
+
         <!-- 跑馬燈軌道容器 -->
         <div class="marquee-wrapper w-full py-10 overflow-hidden flex relative">
-            
+
             <!-- 左側漸層遮罩 -->
-            <div class="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#111111] to-transparent z-20 pointer-events-none"></div>
-            
+            <div
+                class="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#111111] to-transparent z-20 pointer-events-none">
+            </div>
+
             <!-- 跑馬燈內容容器 (JS 將會注入內容到這裡) -->
             <div id="marquee-content" class="animate-scroll">
                 <!-- Javascript will populate this -->
             </div>
 
             <!-- 右側漸層遮罩 -->
-            <div class="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#111111] to-transparent z-20 pointer-events-none"></div>
+            <div
+                class="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#111111] to-transparent z-20 pointer-events-none">
+            </div>
         </div>
     </main>
 
     <script>
         // 資料設定
-        const MOCK_IMAGES = [
-            { url: "https://images.unsplash.com/photo-1533551077682-78c065a30552?auto=format&fit=crop&w=600&q=80", type: "landscape" }, 
-            { url: "https://images.unsplash.com/photo-1550627079-a1338db4d056?auto=format&fit=crop&w=600&q=80", type: "portrait" },  
-            { url: "https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?auto=format&fit=crop&w=600&q=80", type: "portrait" },  
-            { url: "https://images.unsplash.com/photo-1516836378273-db68f2410b2f?auto=format&fit=crop&w=600&q=80", type: "landscape" }, 
-            { url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80", type: "portrait" },  
-            { url: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80", type: "landscape" }, 
+        const DEFAULT_IMAGES = [
+            { url: "https://images.unsplash.com/photo-1533551077682-78c065a30552?auto=format&fit=crop&w=600&q=80", type: "landscape" },
+            { url: "https://images.unsplash.com/photo-1550627079-a1338db4d056?auto=format&fit=crop&w=600&q=80", type: "portrait" },
+            { url: "https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?auto=format&fit=crop&w=600&q=80", type: "portrait" },
+            { url: "https://images.unsplash.com/photo-1516836378273-db68f2410b2f?auto=format&fit=crop&w=600&q=80", type: "landscape" },
+            { url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80", type: "portrait" },
+            { url: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80", type: "landscape" },
         ];
+
+        // 確保 INITIAL_IMAGES 是陣列
+        if (typeof window.INITIAL_IMAGES === 'string') {
+            try {
+                window.INITIAL_IMAGES = JSON.parse(window.INITIAL_IMAGES);
+            } catch (e) {
+                window.INITIAL_IMAGES = [];
+            }
+        }
+
+        const MOCK_IMAGES = (window.INITIAL_IMAGES && Array.isArray(window.INITIAL_IMAGES) && window.INITIAL_IMAGES.length > 0)
+            ? window.INITIAL_IMAGES
+            : DEFAULT_IMAGES;
 
         const AI_COMMENTS = [
             "城隍出巡 棒棒棒！",
@@ -184,7 +229,7 @@
 
             // 準備數據 (3組以確保無縫滾動)
             const generatedExhibits = MOCK_IMAGES.map((img, index) => ({
-                id: `KAGI-${1000 + index}`,
+                id: img.id || `KAGI-${1000 + index}`,
                 image: img,
                 comment: AI_COMMENTS[index % AI_COMMENTS.length]
             }));
@@ -204,4 +249,5 @@
         });
     </script>
 </body>
+
 </html>

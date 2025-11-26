@@ -84,3 +84,18 @@ class UploadedImage(models.Model):
     def get_image_base64(self):
         """取得 base64 格式的圖片（如果使用 base64 儲存）"""
         return self.image_base64
+    
+    def get_base64_data_uri(self):
+        """組出 data URI，方便前端直接顯示 base64 圖片"""
+        if not self.image_base64:
+            return None
+        mime_type = 'image/jpeg'
+        if self.original_filename:
+            ext = os.path.splitext(self.original_filename)[1].lower()
+            if ext in ['.png']:
+                mime_type = 'image/png'
+            elif ext in ['.gif']:
+                mime_type = 'image/gif'
+            elif ext in ['.webp']:
+                mime_type = 'image/webp'
+        return f"data:{mime_type};base64,{self.image_base64}"
