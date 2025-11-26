@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI發文小幫手</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    {% load static %}
+    <link href="{% static 'css/tailwind.css' %}" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,6 +16,7 @@
             background-color: #ffffff;
             color: #1c1e21;
         }
+
         .card {
             background-color: #ffffff;
             border-radius: 12px;
@@ -21,16 +24,20 @@
             padding: 2rem;
             transition: all 0.3s ease;
         }
+
         .input-group {
             margin-bottom: 1.5rem;
         }
+
         .label {
             display: block;
             font-weight: 500;
             margin-bottom: 0.5rem;
             color: #4b5563;
         }
-        .input, .select {
+
+        .input,
+        .select {
             width: 100%;
             padding: 0.75rem 1rem;
             border-radius: 8px;
@@ -38,11 +45,14 @@
             background-color: #f9fafb;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .input:focus, .select:focus {
+
+        .input:focus,
+        .select:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
         }
+
         .btn {
             width: 100%;
             padding: 0.875rem 1.5rem;
@@ -54,16 +64,20 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.1s;
         }
+
         .btn:hover {
             background-color: #1d4ed8;
         }
+
         .btn:active {
             transform: scale(0.98);
         }
+
         .btn:disabled {
             background-color: #9ca3af;
             cursor: not-allowed;
         }
+
         .tab-button {
             padding: 0.5rem 1rem;
             border-radius: 8px;
@@ -72,11 +86,13 @@
             font-weight: 500;
             color: #4b5563;
         }
+
         .tab-button.active {
             background-color: #e0e7ff;
             color: #3730a3;
             border-color: #a5b4fc;
         }
+
         .loader {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #3b82f6;
@@ -85,16 +101,24 @@
             height: 40px;
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .result-image {
             max-width: 100%;
             border-radius: 8px;
             margin-top: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
+
         .copy-button {
             position: absolute;
             top: 10px;
@@ -107,9 +131,11 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
+
         .copy-button:hover {
             background-color: #e5e7eb;
         }
+
         #error-box {
             background-color: #fee2e2;
             color: #b91c1c;
@@ -121,10 +147,11 @@
         }
     </style>
 </head>
+
 <body class="p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
         <header class="text-center mb-8">
-          
+
             <h1 class="text-4xl font-bold text-gray-800">AI 發文小幫手</h1>
 
         </header>
@@ -133,7 +160,7 @@
             <!-- Left Column: Inputs -->
             <div class="card">
                 <h2 class="text-2xl font-bold mb-6">輸入設定</h2>
-                
+
                 <div class="input-group">
                     <label for="apiKey" class="label">Gemini API 金鑰</label>
                     <input type="password" id="apiKey" class="input" placeholder="請在此貼上您的 API 金鑰">
@@ -151,7 +178,8 @@
                     <div id="tab-content">
                         <!-- Text Input -->
                         <div id="text-tab">
-                            <textarea id="text-input" class="input" rows="6" placeholder="請輸入貼文相關的文字、主題或關鍵字..."></textarea>
+                            <textarea id="text-input" class="input" rows="6"
+                                placeholder="請輸入貼文相關的文字、主題或關鍵字..."></textarea>
                         </div>
                         <!-- URL Input -->
                         <div id="url-tab" class="hidden">
@@ -164,8 +192,8 @@
                         </div>
                         <!-- File Input -->
                         <div id="file-tab" class="hidden">
-                           <input type="file" id="file-input" class="input" accept=".txt,.md,.doc,.docx">
-                           <p id="file-name" class="text-sm text-gray-500 mt-2"></p>
+                            <input type="file" id="file-input" class="input" accept=".txt,.md,.doc,.docx">
+                            <p id="file-name" class="text-sm text-gray-500 mt-2"></p>
                         </div>
                     </div>
                 </div>
@@ -203,7 +231,7 @@
 
                 <button id="generate-btn" class="btn">開始生成</button>
 
-                 <div id="error-box">
+                <div id="error-box">
                     <h3 class="font-bold">發生錯誤</h3>
                     <p id="error-message"></p>
                 </div>
@@ -214,7 +242,11 @@
                 <h2 class="text-2xl font-bold mb-6">生成結果</h2>
                 <div id="result-container" class="space-y-6">
                     <div id="placeholder" class="text-center text-gray-500 py-20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
                         <p class="mt-2">生成的圖片和文字將會顯示在這裡</p>
                     </div>
                     <div id="loading-indicator" class="hidden flex flex-col items-center justify-center py-20">
@@ -224,14 +256,16 @@
                     <div id="output" class="hidden space-y-6">
                         <div>
                             <h3 class="text-lg font-semibold mb-2">生成文案</h3>
-                            <div id="text-output" class="relative bg-gray-100 p-4 rounded-lg whitespace-pre-wrap min-h-[150px]">
+                            <div id="text-output"
+                                class="relative bg-gray-100 p-4 rounded-lg whitespace-pre-wrap min-h-[150px]">
                                 <button id="copy-btn" class="copy-button">複製</button>
                                 <p id="text-content"></p>
                             </div>
-                        <div>
-                            <h3 class="text-lg font-semibold mb-2">生成圖片</h3>
-                            <div id="image-output" class="flex justify-center items-center bg-gray-100 rounded-lg min-h-[200px]"></div>
-                        </div>
+                            <div>
+                                <h3 class="text-lg font-semibold mb-2">生成圖片</h3>
+                                <div id="image-output"
+                                    class="flex justify-center items-center bg-gray-100 rounded-lg min-h-[200px]"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -254,7 +288,7 @@
         const styleSelect = document.getElementById('style');
         const customStyleWrapper = document.getElementById('custom-style-wrapper');
         const customStyleInput = document.getElementById('custom-style-input');
-        
+
         const placeholder = document.getElementById('placeholder');
         const loadingIndicator = document.getElementById('loading-indicator');
         const outputContainer = document.getElementById('output');
@@ -267,7 +301,7 @@
         let activeTab = 'text';
         let uploadedImageBase64 = null;
         let uploadedFileContent = null;
-        
+
         // --- Event Listeners ---
 
         // Tab switching logic
@@ -275,10 +309,10 @@
             button.addEventListener('click', () => {
                 const tabName = button.dataset.tab;
                 activeTab = tabName;
-                
+
                 tabs.forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
-                
+
                 document.querySelectorAll('#tab-content > div').forEach(content => {
                     content.classList.add('hidden');
                 });
@@ -308,7 +342,7 @@
                 reader.readAsDataURL(file);
             }
         });
-        
+
         // File upload logic
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -360,7 +394,7 @@
             loadingIndicator.classList.remove('hidden');
             generateBtn.disabled = true;
             generateBtn.textContent = '生成中...';
-            
+
             try {
                 const { prompt, imagePart } = buildPromptAndImage();
                 const model = 'gemini-2.5-flash-image-preview'; // Model for text and image generation
@@ -376,7 +410,7 @@
                         responseModalities: ['TEXT', 'IMAGE']
                     },
                 };
-                
+
                 if (imagePart) {
                     payload.contents[0].parts.push(imagePart);
                 }
@@ -386,14 +420,14 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error?.message || `API 請求失敗，狀態碼: ${response.status}`);
                 }
 
                 const result = await response.json();
-                
+
                 const textPart = result?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || '無法生成文字內容。';
                 const imageBase64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
 
@@ -409,7 +443,7 @@
                 generateBtn.textContent = '開始生成';
             }
         }
-        
+
         function buildPromptAndImage() {
             let content = '';
             let imagePart = null;
@@ -444,7 +478,7 @@
             } else if (style === '無') {
                 style = ''; // Let AI decide
             }
-            
+
             const stylePrompt = style ? `請使用「${style}」的風格語調。` : '請使用最適合的風格語調。';
 
             const prompt = `
@@ -466,7 +500,7 @@
         function displayResults(text, imageBase64) {
             textContent.innerText = text.trim();
             imageOutput.innerHTML = '';
-            
+
             if (imageBase64) {
                 const img = document.createElement('img');
                 img.src = `data:image/png;base64,${imageBase64}`;
@@ -476,7 +510,7 @@
             } else {
                 imageOutput.textContent = '無法生成圖片。';
             }
-            
+
             outputContainer.classList.remove('hidden');
         }
 
@@ -484,21 +518,21 @@
             errorMessage.textContent = message;
             errorBox.style.display = 'block';
         }
-        
+
         function hideError() {
             errorBox.style.display = 'none';
         }
-        
+
         async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
             for (let i = 0; i < retries; i++) {
                 try {
                     const response = await fetch(url, options);
                     // 429 is too many requests, a common reason for retry
                     if (response.status === 429 && i < retries - 1) {
-                         console.log(`Request throttled. Retrying in ${delay / 1000}s...`);
-                         await new Promise(resolve => setTimeout(resolve, delay));
-                         delay *= 2; // Exponential backoff
-                         continue;
+                        console.log(`Request throttled. Retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; // Exponential backoff
+                        continue;
                     }
                     return response;
                 } catch (error) {
@@ -517,4 +551,5 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 </body>
+
 </html>

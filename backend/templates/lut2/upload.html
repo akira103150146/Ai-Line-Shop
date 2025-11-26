@@ -1,25 +1,30 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KAGI LUTS - 上傳介面</title>
-    
+
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
+    {% load static %}
+    <link href="{% static 'css/tailwind.css' %}" rel="stylesheet">
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap"
+        rel="stylesheet">
 
     <style>
         body {
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
             background-color: #111111;
             color: #f3f4f6;
-            overflow-x: hidden; /* 防止手機橫向滾動 */
+            overflow-x: hidden;
+            /* 防止手機橫向滾動 */
         }
 
         /* 隱藏原生 Input */
@@ -29,9 +34,15 @@
 
         /* 掃描線動畫 */
         @keyframes scan {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
+            0% {
+                transform: translateY(-100%);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
         }
+
         .animate-scan {
             animation: scan 2s linear infinite;
         }
@@ -43,11 +54,12 @@
         }
     </style>
 </head>
+
 <body class="min-h-screen flex flex-col relative">
 
     <!-- 背景裝飾 -->
-    <div class="absolute inset-0 z-0 opacity-20 pointer-events-none" 
-         style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px;">
+    <div class="absolute inset-0 z-0 opacity-20 pointer-events-none"
+        style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px;">
     </div>
 
     <!-- 頂部標題 (簡化版，適應手機) -->
@@ -57,7 +69,7 @@
                 <i data-lucide="upload-cloud" width="20" height="20"></i>
             </div>
             <h1 class="text-xl font-black italic tracking-tighter">
-                KAGI  <span class="text-[#CFFF04]"> LUTS </span>
+                KAGI <span class="text-[#CFFF04]"> LUTS </span>
             </h1>
         </div>
     </header>
@@ -68,7 +80,7 @@
         <!-- 1. 尺寸選擇控制台 -->
         <div class="w-full grid grid-cols-2 gap-4">
             <!-- 直式按鈕 -->
-            <button onclick="setOrientation('portrait')" id="btn-portrait" 
+            <button onclick="setOrientation('portrait')" id="btn-portrait"
                 class="active-press relative group p-3 border-2 border-[#CFFF04] bg-[#CFFF04] text-black transition-all shadow-[4px_4px_0px_#333]">
                 <div class="flex flex-col items-center gap-1">
                     <i data-lucide="smartphone" class="w-6 h-6"></i>
@@ -82,7 +94,7 @@
             </button>
 
             <!-- 橫式按鈕 -->
-            <button onclick="setOrientation('landscape')" id="btn-landscape" 
+            <button onclick="setOrientation('landscape')" id="btn-landscape"
                 class="active-press relative group p-3 border-2 border-[#333] bg-[#1a1a1a] text-gray-400 transition-all shadow-[4px_4px_0px_#000]">
                 <div class="flex flex-col items-center gap-1">
                     <i data-lucide="monitor" class="w-6 h-6"></i>
@@ -97,17 +109,21 @@
 
         <!-- 2. 上傳預覽區 (主要互動區) -->
         <div class="relative w-full flex justify-center items-center py-4">
-            
+
             <!-- 外框裝飾 -->
-            <div id="frame-container" class="relative transition-all duration-500 ease-out bg-[#1a1a1a] border-2 border-[#CFFF04] shadow-[8px_8px_0px_rgba(0,0,0,0.8)] p-1 w-[280px] h-[380px]">
-                
+            <div id="frame-container"
+                class="relative transition-all duration-500 ease-out bg-[#1a1a1a] border-2 border-[#CFFF04] shadow-[8px_8px_0px_rgba(0,0,0,0.8)] p-1 w-[280px] h-[380px]">
+
                 <!-- 圖片顯示區域 / 觸發按鈕 -->
-                <div class="relative w-full h-full bg-gray-900 overflow-hidden cursor-pointer group" onclick="triggerUpload()">
-                    
+                <div class="relative w-full h-full bg-gray-900 overflow-hidden cursor-pointer group"
+                    onclick="triggerUpload()">
+
                     <!-- 預設狀態 (無圖片) -->
-                    <div id="placeholder-ui" class="absolute inset-0 flex flex-col items-center justify-center text-[#CFFF04] gap-4 z-10 transition-opacity duration-300">
+                    <div id="placeholder-ui"
+                        class="absolute inset-0 flex flex-col items-center justify-center text-[#CFFF04] gap-4 z-10 transition-opacity duration-300">
                         <!-- 巨大的 + 號 -->
-                        <div class="w-20 h-20 border-2 border-dashed border-[#CFFF04] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-black/50 backdrop-blur-sm">
+                        <div
+                            class="w-20 h-20 border-2 border-dashed border-[#CFFF04] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-black/50 backdrop-blur-sm">
                             <i data-lucide="plus" width="48" height="48"></i>
                         </div>
                         <p class="text-xs font-mono tracking-widest text-center">
@@ -118,13 +134,19 @@
                     </div>
 
                     <!-- 圖片預覽 (預設隱藏) -->
-                    <img id="image-preview" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 filter contrast-125 grayscale-[0.2]" alt="Preview">
-                    
+                    <img id="image-preview" src=""
+                        class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 filter contrast-125 grayscale-[0.2]"
+                        alt="Preview">
+
                     <!-- 裝飾：掃描網格 -->
-                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/3px-tile.png')] opacity-20 pointer-events-none z-20"></div>
-                    
+                    <div
+                        class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/3px-tile.png')] opacity-20 pointer-events-none z-20">
+                    </div>
+
                     <!-- 裝飾：掃描線 (上傳後顯示) -->
-                    <div id="scan-line" class="hidden absolute inset-0 border-b-2 border-[#CFFF04]/50 z-30 animate-scan pointer-events-none bg-gradient-to-b from-transparent to-[#CFFF04]/10 h-full"></div>
+                    <div id="scan-line"
+                        class="hidden absolute inset-0 border-b-2 border-[#CFFF04]/50 z-30 animate-scan pointer-events-none bg-gradient-to-b from-transparent to-[#CFFF04]/10 h-full">
+                    </div>
                 </div>
 
                 <!-- 邊角裝飾 -->
@@ -144,7 +166,8 @@
         </div>
 
         <!-- 確認上傳按鈕 (選圖片後出現) -->
-        <button id="confirm-btn" class="hidden w-full bg-[#CFFF04] text-black font-black text-lg py-4 border-2 border-white shadow-[4px_4px_0px_#fff] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+        <button id="confirm-btn"
+            class="hidden w-full bg-[#CFFF04] text-black font-black text-lg py-4 border-2 border-white shadow-[4px_4px_0px_#fff] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest flex items-center justify-center gap-2">
             <i data-lucide="zap"></i> PROCESS IMAGE
         </button>
 
@@ -180,7 +203,7 @@
                 // 按鈕樣式
                 updateBtnStyle(btnPortrait, true);
                 updateBtnStyle(btnLandscape, false);
-                
+
                 // 框框變形 (直式)
                 frameContainer.style.width = '280px';
                 frameContainer.style.height = '380px';
@@ -214,33 +237,33 @@
         // 3. 處理圖片選擇
         function handleFileSelect(event) {
             const file = event.target.files[0];
-            
+
             if (file) {
                 selectedFile = file; // 保存文件
                 const reader = new FileReader();
-                
+
                 // 讀取前狀態
                 statusText.innerText = "READING DATA STREAM...";
-                
-                reader.onload = function(e) {
+
+                reader.onload = function (e) {
                     // 設定圖片
                     imagePreview.src = e.target.result;
                     imagePreview.classList.remove('opacity-0');
                     placeholderUi.classList.add('opacity-0');
-                    
+
                     // 開啟掃描特效
                     scanLine.classList.remove('hidden');
-                    
+
                     // 顯示確認按鈕
                     confirmBtn.classList.remove('hidden');
-                    
+
                     // 更新狀態文字
                     statusText.innerText = "IMAGE LOADED // READY TO PROCESS";
                     statusText.classList.remove('animate-pulse');
-                    
+
                     // 根據圖片原始比例自動建議方向 (選用功能，目前以使用者手選為主，但可以加入提示)
                     const img = new Image();
-                    img.onload = function() {
+                    img.onload = function () {
                         if (this.width > this.height && currentOrientation === 'portrait') {
                             // 只是 console 提示，不強制切換，尊重使用者選擇
                             console.log("Suggestion: Switch to Landscape");
@@ -248,7 +271,7 @@
                     }
                     img.src = e.target.result;
                 }
-                
+
                 reader.readAsDataURL(file);
             }
         }
@@ -284,7 +307,7 @@
                     statusText.innerText = "UPLOAD SUCCESS!";
                     statusText.classList.remove('animate-pulse');
                     statusText.style.color = '#CFFF04';
-                    
+
                     // 可以顯示成功訊息或重定向
                     setTimeout(() => {
                         alert('圖片上傳成功！\n圖片 ID: ' + result.id);
@@ -318,9 +341,9 @@
             try {
                 // 讀取文件為 base64
                 const reader = new FileReader();
-                reader.onload = async function(e) {
+                reader.onload = async function (e) {
                     const base64Data = e.target.result; // 包含 data:image/...;base64, 前綴
-                    
+
                     const response = await fetch('/lut2/upload-image', {
                         method: 'POST',
                         headers: {
@@ -344,11 +367,11 @@
                         throw new Error(result.message || '上傳失敗');
                     }
                 };
-                
-                reader.onerror = function() {
+
+                reader.onerror = function () {
                     throw new Error('讀取文件失敗');
                 };
-                
+
                 reader.readAsDataURL(selectedFile);
             } catch (error) {
                 statusText.innerText = `ERROR: ${error.message}`;
@@ -363,4 +386,5 @@
         confirmBtn.addEventListener('click', uploadImage);
     </script>
 </body>
+
 </html>

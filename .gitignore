@@ -62,3 +62,8 @@ Desktop.ini
 忽略 gcloud 指令產生的日誌
 
 .gcloud/
+
+忽略 Node.js 相關檔案
+
+node_modules/
+package-lock.json

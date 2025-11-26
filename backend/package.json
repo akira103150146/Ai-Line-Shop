@@ -1,0 +1,12 @@
+{
+    "name": "ai-line-shop-backend",
+    "version": "1.0.0",
+    "description": "Backend for AI Line Shop",
+    "scripts": {
+        "build-css": "tailwindcss -i ./static/src/input.css -o ./static/css/tailwind.css --minify",
+        "watch-css": "tailwindcss -i ./static/src/input.css -o ./static/css/tailwind.css --watch"
+    },
+    "devDependencies": {
+        "tailwindcss": "^3.4.0"
+    }
+}
