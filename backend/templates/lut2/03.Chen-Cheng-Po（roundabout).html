@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Lut2-3 陳澄波-圓環濾鏡</title>
+    <style>
+        /* --- 基礎設定 --- */
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+
+        /* --- UI 覆蓋層 --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+            z-index: 10;
+        }
+
+        /* --- [新增] KAGI LUTS 品牌橫幅風格 --- */
+        .kagi-banner {
+            position: absolute; left: 0; width: 100%;
+            height: 28px; 
+            background: rgba(0, 0, 0, 0.7);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 15;
+            pointer-events: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .banner-top { top: 0; }
+        .banner-bottom { bottom: 0; }
+
+        .kagi-text {
+            font-family: "Arial Black", Impact, "Noto Sans TC", sans-serif;
+            font-weight: 900;
+            color: #D9CB0B; /* 指定黃色 */
+            font-size: 14px;
+            letter-spacing: 4px;
+            text-shadow: 2px 2px 0px #000000;
+            text-transform: uppercase;
+        }
+
+        /* --- 九宮格輔助線 --- */
+        #grid-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .grid-line { position: absolute; background: rgba(255, 255, 255, 0.5); box-shadow: 0 0 2px rgba(0,0,0,0.3); }
+        .grid-h-1 { top: 33.33%; left: 0; width: 100%; height: 1px; }
+        .grid-h-2 { top: 66.66%; left: 0; width: 100%; height: 1px; }
+        .grid-v-1 { left: 33.33%; top: 0; width: 1px; height: 100%; }
+        .grid-v-2 { left: 66.66%; top: 0; width: 1px; height: 100%; }
+
+        /* --- 頂部控制區 --- */
+        .top-controls {
+            padding: 20px; padding-top: 40px; /* 避開 Banner */
+            display: flex; justify-content: flex-end;
+            pointer-events: auto;
+        }
+        .icon-btn {
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.6);
+            color: white; padding: 8px 12px; border-radius: 20px;
+            font-size: 14px; cursor: pointer; backdrop-filter: blur(4px);
+        }
+        .icon-btn.active { background: rgba(255, 200, 0, 0.8); color: black; border-color: transparent; }
+
+        /* --- 底部控制區 --- */
+        .bottom-controls {
+            padding: 20px; padding-bottom: 50px; /* 避開 Banner */
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            pointer-events: auto;
+        }
+
+        /* --- 滑桿樣式 --- */
+        .slider-group {
+            display: flex; align-items: center; gap: 10px; width: 80%; max-width: 300px;
+            color: white; font-size: 12px; text-shadow: 0 1px 2px black;
+        }
+        .slider-label { width: 40px; text-align: right; }
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; background: rgba(255,255,255,0.3);
+            height: 4px; border-radius: 2px; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px;
+            background: #D9CB0B; /* 配合品牌色 */
+            border-radius: 50%; cursor: pointer;
+            border: 2px solid white;
+        }
+
+        /* --- 同心圓快門按鈕 --- */
+        #shutter-btn {
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            border: 4px solid white;
+            background: transparent;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        #shutter-inner {
+            width: 56px; height: 56px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.1s;
+        }
+        #shutter-btn:active { transform: scale(0.95); }
+        #shutter-btn:active #shutter-inner { transform: scale(0.9); background: #ddd; }
+
+        /* --- 錯誤訊息 --- */
+        #error-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; text-align: center; display: none; background: rgba(0,0,0,0.7); padding: 20px; z-index: 50;
+        }
+
+        /* --- [新增] 照片預覽視窗 --- */
+        #preview-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            z-index: 40;
+        }
+        #preview-img {
+            max-width: 90%; max-height: 80%;
+            border: 3px solid #D9CB0B; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        #preview-actions {
+            margin-top: 20px; display: flex; gap: 20px;
+        }
+        .modal-btn {
+            padding: 12px 24px; border-radius: 30px; border: none; font-size: 16px; cursor: pointer; font-weight: bold;
+        }
+        .btn-cancel { background: #333; color: white; border: 2px solid #555; }
+        .btn-save { background: #D9CB0B; color: black; border: 2px solid #D9CB0B; box-shadow: 0 0 10px rgba(217, 203, 11, 0.5); }
+        .preview-hint { color: #ccc; font-size: 14px; margin-top: 15px; }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="error-msg"></div>
+
+    <div class="kagi-banner banner-top">
+        <span class="kagi-text">KAGI LUTS</span>
+    </div>
+
+    <div class="kagi-banner banner-bottom">
+        <span class="kagi-text">KAGI LUTS</span>
+    </div>
+
+    <div id="preview-modal">
+        <img id="preview-img" src="" alt="Captured Photo">
+        <div class="preview-hint">長按圖片可加入「照片」圖庫，或點擊下載</div>
+        <div id="preview-actions">
+            <button class="modal-btn btn-cancel" id="close-modal">返回拍攝</button>
+            <button class="modal-btn btn-save" id="download-modal">下載檔案</button>
+        </div>
+    </div>
+
+    <div id="grid-overlay">
+        <div class="grid-line grid-h-1"></div>
+        <div class="grid-line grid-h-2"></div>
+        <div class="grid-line grid-v-1"></div>
+        <div class="grid-line grid-v-2"></div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="top-controls">
+            <button id="grid-toggle" class="icon-btn"># 格線</button>
+        </div>
+
+        <div class="bottom-controls">
+            <div class="slider-group" id="zoom-group" style="display:none;">
+                <span class="slider-label">Zoom</span>
+                <input type="range" id="zoom-slider" step="0.1">
+            </div>
+
+            <div class="slider-group" id="ev-group" style="display:none;">
+                <span class="slider-label">EV</span>
+                <input type="range" id="ev-slider" step="0.1">
+            </div>
+
+            <div id="shutter-btn">
+                <div id="shutter-inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Shader 定義 (濾鏡核心 + 變形修正)
+        // ==========================================
+        
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform sampler2D tDiffuse;
+            uniform float time;
+            uniform vec2 resolution; // [新增]
+            uniform vec2 textureResolution; // [新增]
+            varying vec2 vUv;
+
+            // 輔助函數：亂數
+            float random(vec2 p) {
+                return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            void main() {
+                // [新增] 步驟 -1: Aspect Ratio Correction (變形修正)
+                float screenAspect = resolution.x / resolution.y;
+                float textureAspect = textureResolution.x / textureResolution.y;
+                vec2 ratio = vec2(
+                    min((resolution.x / resolution.y) / (textureResolution.x / textureResolution.y), 1.0),
+                    min((resolution.y / resolution.x) / (textureResolution.y / textureResolution.x), 1.0)
+                );
+                // 計算修正後的 UV
+                vec2 correctedUV = vec2(
+                    vUv.x * ratio.x + (1.0 - ratio.x) * 0.5,
+                    vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
+                );
+
+                vec4 texel = texture2D(tDiffuse, correctedUV);
+                vec3 color = texel.rgb;
+
+                // -------------------------------------------------
+                // 步驟 1: 模擬油畫色調 (Color Grading)
+                // -------------------------------------------------
+                
+                // 增加對比度
+                color = (color - 0.5) * 1.15 + 0.5;
+
+                // 色溫偏移：
+                // 上一版基礎: vec3(1.05, 1.05, 0.95)
+                // 本次修改: 
+                // 1. 再增加 3% 綠色 (G + 0.03)
+                // 2. 增加 5% 淡橘色 (主要增加 R + 0.05, 並微調 G 形成橘調)
+                // 最終結果: R=1.10, G=1.10, B=0.95
+                vec3 warmTint = vec3(1.10, 1.10, 0.95); 
+                color *= warmTint;
+
+                // 暗部偏移：將黑色推向深綠/褐色
+                float luminance = dot(color, vec3(0.299, 0.587, 0.114));
+                vec3 shadowColor = vec3(0.1, 0.15, 0.05);
+                color = mix(color, color + shadowColor, (1.0 - luminance) * 0.3);
+
+                // -------------------------------------------------
+                // 步驟 2: 特殊色相調整 (Hues)
+                // -------------------------------------------------
+                
+                // 降低整體飽和度
+                vec3 gray = vec3(luminance);
+                color = mix(gray, color, 0.85);
+
+                // -------------------------------------------------
+                // 步驟 3: 畫布紋理與噪點 (Texture & Noise)
+                // -------------------------------------------------
+                
+                float noiseStrength = 0.08; 
+                float grain = random(vUv * time) * noiseStrength;
+                color += grain;
+
+                // -------------------------------------------------
+                // 步驟 4: 暗角效果 (Vignette)
+                // -------------------------------------------------
+                
+                // 使用 correctedUV 作為基礎來計算暗角，並加入位移
+                vec2 center = vec2(0.5, 0.5);
+                vec2 vignetteUV = correctedUV; 
+                vignetteUV.y -= 0.1; // 上方暗角較重
+                
+                float dist = distance(vignetteUV, center);
+                float vignette = smoothstep(0.8, 0.35, dist * (1.2));
+                
+                color *= vignette;
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // ==========================================
+        // 2. Three.js 場景初始化
+        // ==========================================
+
+        let camera, scene, renderer;
+        let video, videoTexture;
+        let material, mesh;
+        let videoTrack; 
+
+        function init() {
+            const container = document.body;
+
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            initCamera();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        async function initCamera() {
+            try {
+                // 使用高解析度以獲得最佳畫質
+                const constraints = {
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 4608 }, 
+                        height: { ideal: 3456 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video = document.createElement('video');
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    video.play();
+                    updateTextureResolution();
+                    console.log(`Camera: ${video.videoWidth}x${video.videoHeight}`);
+                };
+
+                videoTrack = stream.getVideoTracks()[0];
+                setupHardwareControls(videoTrack);
+
+                videoTexture = new THREE.VideoTexture(video);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+
+                material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        tDiffuse: { value: videoTexture },
+                        time: { value: 0.0 },
+                        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        textureResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                    },
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader
+                });
+
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+
+                animate();
+
+            } catch (err) {
+                console.error("Camera Error:", err);
+                document.getElementById('error-msg').style.display = 'block';
+                document.getElementById('error-msg').innerText = "無法存取相機，請確保允許權限並使用 HTTPS 連線。\n" + err.message;
+            }
+        }
+
+        function updateTextureResolution() {
+            if (video && material && video.videoWidth) {
+                material.uniforms.textureResolution.value.set(video.videoWidth, video.videoHeight);
+            }
+        }
+
+        // ==========================================
+        // 3. 硬體控制 (Zoom & EV)
+        // ==========================================
+
+        function setupHardwareControls(track) {
+            const capabilities = track.getCapabilities();
+            const settings = track.getSettings();
+
+            if ('zoom' in capabilities) {
+                const zoomGroup = document.getElementById('zoom-group');
+                const zoomSlider = document.getElementById('zoom-slider');
+                zoomGroup.style.display = 'flex';
+                zoomSlider.min = capabilities.zoom.min;
+                zoomSlider.max = capabilities.zoom.max;
+                Slider.step = capabilities.zoom.step || 0.1;
+                zoomSlider.value = settings.zoom || capabilities.zoom.min;
+                zoomSlider.addEventListener('input', (e) => {
+                    track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] })
+                        .catch(e => console.warn("Zoom failed:", e));
+                });
+            }
+
+            if ('exposureCompensation' in capabilities) {
+                const evGroup = document.getElementById('ev-group');
+                const evSlider = document.getElementById('ev-slider');
+                evGroup.style.display = 'flex';
+                evSlider.min = capabilities.exposureCompensation.min;
+                evSlider.max = capabilities.exposureCompensation.max;
+                evSlider.step = capabilities.exposureCompensation.step || 0.1;
+                evSlider.value = settings.exposureCompensation || 0;
+                evSlider.addEventListener('input', (e) => {
+                    track.applyConstraints({ advanced: [{ exposureCompensation: parseFloat(e.target.value) }] })
+                        .catch(e => console.warn("EV failed:", e));
+                });
+            }
+        }
+
+        // ==========================================
+        // 4. 畫面渲染與適應
+        // ==========================================
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (material) {
+                material.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+                updateTextureResolution();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (material) {
+                material.uniforms.time.value += 0.05;
+            }
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // 5. UI 互動 & 影像合成邏輯
+        // ==========================================
+
+        const gridToggle = document.getElementById('grid-toggle');
+        const gridOverlay = document.getElementById('grid-overlay');
+        let isGridOn = false;
+
+        gridToggle.addEventListener('click', () => {
+            isGridOn = !isGridOn;
+            gridOverlay.style.display = isGridOn ? 'block' : 'none';
+            gridToggle.classList.toggle('active', isGridOn);
+        });
+
+        // 預覽與下載相關變數
+        const shutterBtn = document.getElementById('shutter-btn');
+        const previewModal = document.getElementById('preview-modal');
+        const previewImg = document.getElementById('preview-img');
+        const closeModal = document.getElementById('close-modal');
+        const downloadModal = document.getElementById('download-modal');
+        let currentImageURL = null;
+
+        // 合成最終影像的函式 (包含濾鏡畫面與邊框)
+        function composeFinalImage() {
+            // 1. 渲染 WebGL
+            renderer.render(scene, camera);
+
+            // 2. 建立合成 Canvas
+            const composeCanvas = document.createElement('canvas');
+            composeCanvas.width = renderer.domElement.width;
+            composeCanvas.height = renderer.domElement.height;
+            const ctx = composeCanvas.getContext('2d');
+
+            // 3. 繪製濾鏡畫面
+            ctx.drawImage(renderer.domElement, 0, 0);
+
+            // 4. 繪製邊框
+            const pixelRatio = window.devicePixelRatio;
+            const bannerHeight = 28 * pixelRatio; 
+            const fontSize = 14 * pixelRatio;
+            const textShadowOffset = 2 * pixelRatio;
+
+            // 背景
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, composeCanvas.width, bannerHeight);
+            ctx.fillRect(0, composeCanvas.height - bannerHeight, composeCanvas.width, bannerHeight);
+
+            // 文字
+            ctx.font = `900 ${fontSize}px "Arial Black", Impact, "Noto Sans TC", sans-serif`;
+            ctx.fillStyle = '#D9CB0B'; // 指定黃色
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#000000';
+            ctx.shadowOffsetX = textShadowOffset;
+            ctx.shadowOffsetY = textShadowOffset;
+            ctx.shadowBlur = 0;
+
+            const text = "KAGI LUTS";
+            ctx.fillText(text, composeCanvas.width / 2, bannerHeight / 2);
+            ctx.fillText(text, composeCanvas.width / 2, composeCanvas.height - bannerHeight / 2);
+
+            return composeCanvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        shutterBtn.addEventListener('click', () => {
+            // 1. 合成
+            const finalImageURL = composeFinalImage();
+            
+            // 2. 預覽
+            previewImg.src = finalImageURL;
+            previewModal.style.display = 'flex';
+            currentImageURL = finalImageURL;
+
+            // 3. 快門動畫 (品牌色)
+            const originalBg = shutterBtn.querySelector('#shutter-inner').style.backgroundColor;
+            shutterBtn.querySelector('#shutter-inner').style.backgroundColor = "#D9CB0B";
+            setTimeout(() => {
+                shutterBtn.querySelector('#shutter-inner').style.backgroundColor = originalBg;
+            }, 100);
+        });
+
+        closeModal.addEventListener('click', () => {
+            previewModal.style.display = 'none';
+        });
+
+        downloadModal.addEventListener('click', () => {
+            if (currentImageURL) triggerDownload(currentImageURL);
+        });
+
+        function triggerDownload(url) {
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.download = `KAGI_LUTS_WengKunDe_${timestamp}.jpg`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
