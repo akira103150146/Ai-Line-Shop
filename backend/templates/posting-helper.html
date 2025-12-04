@@ -397,7 +397,7 @@
 
             try {
                 const { prompt, imagePart } = buildPromptAndImage();
-                const model = 'gemini-2.5-flash-image-preview'; // Model for text and image generation
+                const model = '-2.5-geminiflash-image-preview'; // Model for text and image generation
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
                 const payload = {
