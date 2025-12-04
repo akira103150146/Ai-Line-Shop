@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>lut2-2方慶綿-菸酒公賣局濾鏡</title>
+    <title>Lut2-2 方慶綿濾鏡</title>
     <style>
         /* --- 基礎設定 --- */
         body { margin: 0; overflow: hidden; background-color: #111; font-family: sans-serif; }
@@ -12,15 +12,41 @@
         /* --- UI 覆蓋層 --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* 讓點擊穿透到下方 */
+            pointer-events: none;
             display: flex; flex-direction: column; justify-content: space-between;
+            z-index: 10;
+        }
+
+        /* --- [新增] KAGI LUTS 品牌橫幅 --- */
+        .kagi-banner {
+            position: absolute; left: 0; width: 100%;
+            height: 28px; 
+            background: rgba(0, 0, 0, 0.7);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 15;
+            pointer-events: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .banner-top { top: 0; }
+        .banner-bottom { bottom: 0; }
+
+        .kagi-text {
+            font-family: "Arial Black", Impact, "Noto Sans TC", sans-serif;
+            font-weight: 900;
+            color: #D9CB0B; /* 品牌黃色 */
+            font-size: 14px;
+            letter-spacing: 4px;
+            text-shadow: 2px 2px 0px #000000;
+            text-transform: uppercase;
         }
 
         /* --- 九宮格輔助線 --- */
         #grid-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; /* 預設隱藏 */
+            display: none;
             pointer-events: none;
+            z-index: 5;
         }
         .grid-line { position: absolute; background: rgba(255, 255, 255, 0.4); box-shadow: 0 0 1px rgba(0,0,0,0.5); }
         .grid-h-1 { top: 33.33%; left: 0; width: 100%; height: 1px; }
@@ -30,7 +56,7 @@
 
         /* --- 頂部控制區 --- */
         .top-controls {
-            padding: 20px;
+            padding: 20px; padding-top: 40px; /* 避開 Banner */
             display: flex; justify-content: flex-end;
             pointer-events: auto;
         }
@@ -44,13 +70,13 @@
 
         /* --- 底部控制區 --- */
         .bottom-controls {
-            padding: 20px; padding-bottom: 40px;
+            padding: 20px; padding-bottom: 50px; /* 避開 Banner */
             background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
             display: flex; flex-direction: column; align-items: center; gap: 15px;
             pointer-events: auto;
         }
 
-        /* --- 滑桿樣式 (黑白風格) --- */
+        /* --- 滑桿樣式 (維持原版黑白風格) --- */
         .slider-group {
             display: flex; align-items: center; gap: 10px; width: 80%; max-width: 300px;
             color: #eee; font-size: 12px; text-shadow: 0 1px 2px black; font-family: monospace;
@@ -88,14 +114,54 @@
         /* --- 錯誤訊息 --- */
         #error-msg {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: white; text-align: center; display: none; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid white;
+            color: white; text-align: center; display: none; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid white; z-index: 50;
         }
+
+        /* --- [新增] 照片預覽視窗 --- */
+        #preview-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+            z-index: 40;
+        }
+        #preview-img {
+            max-width: 90%; max-height: 80%;
+            border: 3px solid #D9CB0B; /* 品牌黃框 */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        #preview-actions {
+            margin-top: 20px; display: flex; gap: 20px;
+        }
+        .modal-btn {
+            padding: 12px 24px; border-radius: 30px; border: none; font-size: 16px; cursor: pointer; font-weight: bold;
+        }
+        .btn-cancel { background: #333; color: white; border: 2px solid #555; }
+        .btn-save { background: #D9CB0B; color: black; border: 2px solid #D9CB0B; box-shadow: 0 0 10px rgba(217, 203, 11, 0.5); }
+        .preview-hint { color: #ccc; font-size: 14px; margin-top: 15px; }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div id="error-msg"></div>
+
+    <div class="kagi-banner banner-top">
+        <span class="kagi-text">KAGI LUTS</span>
+    </div>
+
+    <div class="kagi-banner banner-bottom">
+        <span class="kagi-text">KAGI LUTS</span>
+    </div>
+
+    <div id="preview-modal">
+        <img id="preview-img" src="" alt="Captured Photo">
+        <div class="preview-hint">長按圖片可加入「照片」圖庫，或點擊下載</div>
+        <div id="preview-actions">
+            <button class="modal-btn btn-cancel" id="close-modal">返回拍攝</button>
+            <button class="modal-btn btn-save" id="download-modal">下載檔案</button>
+        </div>
+    </div>
 
     <div id="grid-overlay">
         <div class="grid-line grid-h-1"></div>
@@ -128,7 +194,7 @@
 
     <script>
         // ==========================================
-        // 1. Shader 定義 (方慶綿風格核心)
+        // 1. Shader 定義 (方慶綿風格 + 變形修正)
         // ==========================================
         
         const vertexShader = `
@@ -142,78 +208,75 @@
         const fragmentShader = `
             uniform sampler2D tDiffuse;
             uniform float time;
+            uniform vec2 resolution; // [新增]
+            uniform vec2 textureResolution; // [新增]
             varying vec2 vUv;
 
-            // 輔助函數：亂數 (用於微細顆粒)
+            // 輔助函數：亂數
             float random(vec2 p) {
                 return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5453);
             }
 
             void main() {
-                vec4 texel = texture2D(tDiffuse, vUv);
+                // [新增] 步驟 -1: 變形修正 (Aspect Ratio Correction)
+                float screenAspect = resolution.x / resolution.y;
+                float textureAspect = textureResolution.x / textureResolution.y;
+                vec2 ratio = vec2(
+                    min((resolution.x / resolution.y) / (textureResolution.x / textureResolution.y), 1.0),
+                    min((resolution.y / resolution.x) / (textureResolution.y / textureResolution.x), 1.0)
+                );
+                vec2 correctedUV = vec2(
+                    vUv.x * ratio.x + (1.0 - ratio.x) * 0.5,
+                    vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
+                );
+
+                vec4 texel = texture2D(tDiffuse, correctedUV);
                 vec3 color = texel.rgb;
 
                 // -------------------------------------------------
                 // 步驟 1: 純黑白轉換 (Luminance)
                 // -------------------------------------------------
-                // 使用 Rec.709 標準權重轉換為灰階
                 float gray = dot(color, vec3(0.299, 0.587, 0.114));
 
                 // -------------------------------------------------
                 // 步驟 2: 色階與對比度重塑 (Tone Mapping)
                 // -------------------------------------------------
                 
-                // 方慶綿的照片特點：
-                // 1. 白色很亮（雲層、天空），黑色很深（岩石陰影）。
-                // 2. 中間調層次分明，不像現代照片那麼平。
-
                 // 模擬 S-Curve 曲線來增加反差
-                // 先稍微壓低 Gamma (1.1) 讓暗部更紮實 (Solid Blacks)
                 gray = pow(gray, 1.1);
 
-                // 強制拉開對比度 (Contrast Boost)
-                // 係數 1.3 讓灰階變得比較"硬" (Hard)
+                // 強制拉開對比度
                 gray = (gray - 0.5) * 1.3 + 0.5;
 
-                // 修正範圍，確保不超過 0~1
                 gray = clamp(gray, 0.0, 1.0);
 
                 // -------------------------------------------------
                 // 步驟 3: 模擬銀鹽顆粒 (Silver Halide Grain)
                 // -------------------------------------------------
                 
-                // 不同於油畫的粗糙，這是一種高解析度的細微顆粒
                 float noiseStrength = 0.05; 
-                
-                // 生成動態噪點，範圍在 -0.5 ~ 0.5 之間
                 float grain = (random(vUv * time * 2.0) - 0.5) * noiseStrength;
-                
-                // 將噪點疊加到灰階上
                 gray += grain;
 
                 // -------------------------------------------------
                 // 步驟 4: 光學暗角 (Optical Vignette)
                 // -------------------------------------------------
                 
-                // 模擬老式大畫幅鏡頭的邊緣失光
                 vec2 center = vec2(0.5, 0.5);
-                float dist = distance(vUv, center);
+                float dist = distance(correctedUV, center); // 使用修正後的 UV 確保暗角為圓形
                 
-                // smoothstep 創造平滑的暗角過渡
-                // 0.75 開始變暗，到邊緣明顯壓黑
                 float vignette = smoothstep(0.8, 0.3, dist);
-                
                 gray *= vignette;
 
                 // -------------------------------------------------
-                // 輸出：純黑白 (R=G=B)
+                // 輸出
                 // -------------------------------------------------
                 gl_FragColor = vec4(vec3(gray), 1.0);
             }
         `;
 
         // ==========================================
-        // 2. Three.js 場景初始化 (通用邏輯)
+        // 2. Three.js 場景初始化
         // ==========================================
 
         let camera, scene, renderer;
@@ -238,19 +301,27 @@
 
         async function initCamera() {
             try {
+                // [修改] 請求高解析度
                 const constraints = {
                     video: {
                         facingMode: 'environment', 
-                        width: { ideal: 2048 },    
-                        height: { ideal: 1536 }
+                        width: { ideal: 4608 },    
+                        height: { ideal: 3456 }
                     },
                     audio: false
                 };
 
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video = document.createElement('video');
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
                 video.srcObject = stream;
-                video.play();
+                
+                video.onloadedmetadata = () => {
+                    video.play();
+                    updateTextureResolution();
+                    console.log(`Camera: ${video.videoWidth}x${video.videoHeight}`);
+                };
 
                 videoTrack = stream.getVideoTracks()[0];
                 setupHardwareControls(videoTrack);
@@ -262,7 +333,9 @@
                 material = new THREE.ShaderMaterial({
                     uniforms: {
                         tDiffuse: { value: videoTexture },
-                        time: { value: 0.0 }
+                        time: { value: 0.0 },
+                        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        textureResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
                     },
                     vertexShader: vertexShader,
                     fragmentShader: fragmentShader
@@ -277,19 +350,25 @@
             } catch (err) {
                 console.error("Camera Error:", err);
                 document.getElementById('error-msg').style.display = 'block';
-                document.getElementById('error-msg').innerText = "無法存取相機，請確保使用 HTTPS 或本機測試。\n" + err.message;
+                document.getElementById('error-msg').innerText = "無法存取相機。\n" + err.message;
+            }
+        }
+
+        function updateTextureResolution() {
+            if (video && material && video.videoWidth) {
+                material.uniforms.textureResolution.value.set(video.videoWidth, video.videoHeight);
             }
         }
 
         // ==========================================
-        // 3. 硬體控制 (Zoom & EV) - 與前版相同
+        // 3. 硬體控制 (Zoom & EV)
         // ==========================================
 
         function setupHardwareControls(track) {
             const capabilities = track.getCapabilities();
             const settings = track.getSettings();
 
-            // --- Zoom ---
+            // Zoom
             if ('zoom' in capabilities) {
                 const zoomGroup = document.getElementById('zoom-group');
                 const zoomSlider = document.getElementById('zoom-slider');
@@ -304,7 +383,7 @@
                 });
             }
 
-            // --- EV ---
+            // EV
             if ('exposureCompensation' in capabilities) {
                 const evGroup = document.getElementById('ev-group');
                 const evSlider = document.getElementById('ev-slider');
@@ -326,6 +405,10 @@
 
         function onWindowResize() {
             renderer.setSize(window.innerWidth, window.innerHeight);
+            if (material) {
+                material.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+                updateTextureResolution();
+            }
         }
 
         function animate() {
@@ -337,10 +420,9 @@
         }
 
         // ==========================================
-        // 5. UI 互動 (九宮格 & 拍照)
+        // 5. UI 互動 & 影像合成
         // ==========================================
 
-        // Grid
         const gridToggle = document.getElementById('grid-toggle');
         const gridOverlay = document.getElementById('grid-overlay');
         let isGridOn = false;
@@ -351,27 +433,88 @@
             gridToggle.classList.toggle('active', isGridOn);
         });
 
-        // Shutter
+        // 預覽與儲存邏輯
         const shutterBtn = document.getElementById('shutter-btn');
-        shutterBtn.addEventListener('click', () => {
-            renderer.render(scene, camera); 
-            const dataURL = renderer.domElement.toDataURL('image/jpeg', 0.95);
-            
-            const link = document.createElement('a');
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            // 檔名改為 FangQingMian
-            link.download = `FangQingMian_Filter_${timestamp}.jpg`;
-            link.href = dataURL;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        const previewModal = document.getElementById('preview-modal');
+        const previewImg = document.getElementById('preview-img');
+        const closeModal = document.getElementById('close-modal');
+        const downloadModal = document.getElementById('download-modal');
+        let currentImageURL = null;
 
+        // 合成最終影像
+        function composeFinalImage() {
+            renderer.render(scene, camera);
+
+            const composeCanvas = document.createElement('canvas');
+            composeCanvas.width = renderer.domElement.width;
+            composeCanvas.height = renderer.domElement.height;
+            const ctx = composeCanvas.getContext('2d');
+
+            // 繪製黑白濾鏡畫面
+            ctx.drawImage(renderer.domElement, 0, 0);
+
+            // 繪製 KAGI LUTS 邊框
+            const pixelRatio = window.devicePixelRatio;
+            const bannerHeight = 28 * pixelRatio; 
+            const fontSize = 14 * pixelRatio;
+            const textShadowOffset = 2 * pixelRatio;
+
+            // 背景
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, composeCanvas.width, bannerHeight);
+            ctx.fillRect(0, composeCanvas.height - bannerHeight, composeCanvas.width, bannerHeight);
+
+            // 文字
+            ctx.font = `900 ${fontSize}px "Arial Black", Impact, "Noto Sans TC", sans-serif`;
+            ctx.fillStyle = '#D9CB0B'; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#000000';
+            ctx.shadowOffsetX = textShadowOffset;
+            ctx.shadowOffsetY = textShadowOffset;
+            ctx.shadowBlur = 0;
+
+            const text = "KAGI LUTS";
+            ctx.fillText(text, composeCanvas.width / 2, bannerHeight / 2);
+            ctx.fillText(text, composeCanvas.width / 2, composeCanvas.height - bannerHeight / 2);
+
+            return composeCanvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        shutterBtn.addEventListener('click', () => {
+            // 1. 合成
+            const finalImageURL = composeFinalImage();
+            
+            // 2. 預覽
+            previewImg.src = finalImageURL;
+            previewModal.style.display = 'flex';
+            currentImageURL = finalImageURL;
+
+            // 3. 快門動畫 (閃爍一下黃色)
             const originalBg = shutterBtn.querySelector('#shutter-inner').style.backgroundColor;
-            shutterBtn.querySelector('#shutter-inner').style.backgroundColor = "#333";
+            shutterBtn.querySelector('#shutter-inner').style.backgroundColor = "#D9CB0B"; 
             setTimeout(() => {
                 shutterBtn.querySelector('#shutter-inner').style.backgroundColor = originalBg;
             }, 100);
         });
+
+        closeModal.addEventListener('click', () => {
+            previewModal.style.display = 'none';
+        });
+
+        downloadModal.addEventListener('click', () => {
+            if (currentImageURL) triggerDownload(currentImageURL);
+        });
+
+        function triggerDownload(url) {
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.download = `KAGI_LUTS_FangQingMian_${timestamp}.jpg`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
         init();
 
