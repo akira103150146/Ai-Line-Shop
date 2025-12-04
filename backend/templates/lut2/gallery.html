@@ -4,8 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 加入防止快取的 Meta -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>KAGI LUTS 投影畫面</title>
-    
+
     <!-- Tailwind CSS -->
     {% load static %}
     <link href="{% static 'css/tailwind.css' %}" rel="stylesheet">
@@ -13,7 +17,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Google Fonts (Optional for better sans-serif) -->
+    <!-- Google Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap"
         rel="stylesheet">
@@ -26,51 +30,40 @@
             overflow: hidden;
         }
 
-        /* 選擇文字顏色 */
         ::selection {
             background-color: #D9CB0B;
             color: black;
         }
 
-        /* 跑馬燈動畫 */
-        @keyframes scroll {
+        /* --- 核心動畫修改 --- */
+        @keyframes scroll-enter-right {
             0% {
-                transform: translateX(0);
+                /* 起點：從畫面最右邊外側開始 */
+                transform: translateX(100vw);
             }
 
             100% {
-                transform: translateX(-33.33%);
+                /* 終點：完全移出左側 */
+                transform: translateX(-100%);
             }
-
-            /* 移動 1/3 (因為有3組) */
         }
 
         .animate-scroll {
             display: flex;
-            animation: scroll 40s linear infinite;
+            flex-wrap: nowrap;
+            /* 確保不換行 */
+            /* 使用新的動畫邏輯 */
+            animation: scroll-enter-right 45s linear infinite;
             width: max-content;
+            padding-left: 20px;
+            /* 一點緩衝 */
         }
 
+        /* 滑鼠懸停時暫停，方便觀看 */
         .marquee-wrapper:hover .animate-scroll {
             animation-play-state: paused;
         }
 
-        /* 旋轉動畫 */
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .animate-spin-slow {
-            animation: spin 3s linear infinite;
-        }
-
-        /* 自定義濾鏡 */
         .filter-custom {
             filter: contrast(1.1) grayscale(0.2);
             transition: all 0.5s;
@@ -79,8 +72,28 @@
         .group:hover .filter-custom {
             filter: grayscale(0);
         }
+
+        /* NEW 標籤的閃爍動畫 */
+        @keyframes pulse-yellow {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1);
+            }
+        }
+
+        .animate-pulse-fast {
+            animation: pulse-yellow 1s ease-in-out infinite;
+        }
     </style>
     <script id="initial-images-data">
+        // 初始資料載入
         {% if has_images %}
         window.INITIAL_IMAGES = {{ images_json | safe }};
         {% else %}
@@ -88,23 +101,22 @@
         {% endif %}
     </script>
 </head>
+
 <body class="min-h-screen relative selection:bg-[#D9CB0B] selection:text-black">
 
-    <!-- 背景裝飾：模擬海報中的像素雜訊感 -->
     <div class="absolute inset-0 z-0 opacity-20 pointer-events-none"
         style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px;">
     </div>
 
-    <!-- 頂部標題列 -->
     <header
         class="relative z-20 bg-black/80 backdrop-blur-md border-b border-[#333] py-4 px-6 flex justify-between items-center">
         <div class="flex items-center gap-4">
-            <!-- Logo 區塊 -->
             <div class="bg-[#D9CB0B] text-black p-2 border border-white">
                 <i data-lucide="zap" width="28" height="28" stroke-width="2.5"></i>
             </div>
             <div>
-                <h1 class="text-3xl font-black tracking-tighter text-white italic" style="text-shadow: 2px 2px 0px #D9CB0B;">
+                <h1 class="text-3xl font-black tracking-tighter text-white italic"
+                    style="text-shadow: 2px 2px 0px #D9CB0B;">
                     <span class="text-[#D9CB0B]">K A G I</span> L U T S
                 </h1>
                 <p class="text-xs text-[#D9CB0B] font-bold tracking-[0.3em] uppercase mt-1">
@@ -113,30 +125,27 @@
             </div>
         </div>
 
-        <!-- 右側狀態列 -->
-        <div class="hidden md:flex items-center gap-2 px-4 py-2 border border-[#333] bg-[#000] text-xs font-mono text-[#D9CB0B]]">
-            <span class="w-2 h-2 bg-[#D9CB0B] rounded-full animate-pulse"></span>
-            LIVE_FEED_ONLINE
+        <div
+            class="hidden md:flex items-center gap-2 px-4 py-2 border border-[#333] bg-[#000] text-xs font-mono text-[#D9CB0B]]">
+            <span class="w-2 h-2 bg-[#D9CB0B] rounded-full animate-pulse" id="status-dot"></span>
+            <span id="status-text">LIVE_FEED_ONLINE</span>
         </div>
     </header>
 
-    <!-- 主要展示區 (跑馬燈) -->
     <main class="relative z-10 flex flex-col justify-center h-[calc(100vh-90px)] overflow-hidden">
 
-        <!-- 跑馬燈軌道容器 -->
+        <!-- 跑馬燈容器 -->
         <div class="marquee-wrapper w-full py-10 overflow-hidden flex relative">
-
-            <!-- 左側漸層遮罩 -->
+            <!-- 左側漸層遮罩 (讓離開時比較自然) -->
             <div
                 class="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#111111] to-transparent z-20 pointer-events-none">
             </div>
 
-            <!-- 跑馬燈內容容器 (JS 將會注入內容到這裡) -->
             <div id="marquee-content" class="animate-scroll">
                 <!-- Javascript will populate this -->
             </div>
 
-            <!-- 右側漸層遮罩 -->
+            <!-- 右側漸層遮罩 (讓進入時比較自然) -->
             <div
                 class="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#111111] to-transparent z-20 pointer-events-none">
             </div>
@@ -144,75 +153,66 @@
     </main>
 
     <script>
-        // 資料設定
+        // 預設資料
         const DEFAULT_IMAGES = [
-            { url: "https://images.unsplash.com/photo-1533551077682-78c065a30552?auto=format&fit=crop&w=600&q=80", type: "landscape" },
-            { url: "https://images.unsplash.com/photo-1550627079-a1338db4d056?auto=format&fit=crop&w=600&q=80", type: "portrait" },
-            { url: "https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?auto=format&fit=crop&w=600&q=80", type: "portrait" },
-            { url: "https://images.unsplash.com/photo-1516836378273-db68f2410b2f?auto=format&fit=crop&w=600&q=80", type: "landscape" },
-            { url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80", type: "portrait" },
-            { url: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80", type: "landscape" },
+            { url: "https://images.unsplash.com/photo-1533551077682-78c065a30552", type: "landscape", comment: "範例：諸羅山色", author: "System" },
+            { url: "https://images.unsplash.com/photo-1550627079-a1338db4d056", type: "portrait", comment: "範例：蘭潭月影", author: "System" },
         ];
 
-        // 確保 INITIAL_IMAGES 是陣列
-        if (typeof window.INITIAL_IMAGES === 'string') {
-            try {
-                window.INITIAL_IMAGES = JSON.parse(window.INITIAL_IMAGES);
-            } catch (e) {
-                window.INITIAL_IMAGES = [];
-            }
+        // 全域變數：紀錄最新一張圖片的 ID
+        let latestImageId = null;
+
+        // 處理圖片載入失敗
+        window.handleImageError = function (img) {
+            console.error("Image failed to load:", img.src);
+            img.src = "https://placehold.co/600x400/1a1a1a/D9CB0B?text=Image+Not+Found";
+            img.classList.add('opacity-50');
         }
 
-        const MOCK_IMAGES = (window.INITIAL_IMAGES && Array.isArray(window.INITIAL_IMAGES) && window.INITIAL_IMAGES.length > 0)
-            ? window.INITIAL_IMAGES
-            : DEFAULT_IMAGES;
+        // 產生單一展品 HTML
+        function createExhibitHTML(item, isNew = false) {
+            const sizeClass = item.type === 'portrait' ? 'w-[280px] h-[380px]' : 'w-[380px] h-[280px]';
+            const displayText = item.comment || "......";
+            const authorText = item.author ? `— ${item.author}` : "";
 
-        const AI_COMMENTS = [
-            "城隍出巡 棒棒棒！",
-            "這光影捕捉得太神了，充滿故事感。",
-            "構圖非常大膽，展現了強烈的生命力。",
-            "復古色調完美還原了那個年代的氛圍。",
-            "人物表情生動，彷彿能聽到現場的聲音。",
-            "雖然是靜態照片，卻充滿了動態張力！",
-            "色彩飽和度恰到好處，視覺衝擊力強。",
-            "這就是我們記憶中的台灣味，太感動了。",
-            "捕捉到了決定性的瞬間！大師級作品。",
-            "日常生活中的不平凡，AI 給予高度評價。"
-        ];
+            // 如果是最新上傳的圖片，加入 NEW 標籤
+            const newBadgeHTML = isNew ? `
+                <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-[#D9CB0B] text-black font-black text-sm px-3 py-1 z-30 border border-white shadow-[4px_4px_0px_#000] animate-pulse-fast rotate-[-2deg]">
+                    NEW ARRIVAL
+                </div>
+            ` : '';
 
-        // 產生單一展品 HTML 的函數
-        function createExhibitHTML(image, comment, id) {
-            // 尺寸設定
-            const sizeClass = image.type === 'portrait' ? 'w-[280px] h-[380px]' : 'w-[380px] h-[280px]';
+            // 如果是新圖片，框線發光
+            const borderClass = isNew ? 'border-[#D9CB0B] shadow-[0_0_20px_rgba(217,203,11,0.6)]' : 'border-[#D9CB0B]';
 
             return `
-            <div class="flex flex-col items-center justify-start mx-8 md:mx-12 flex-shrink-0 group select-none transition-transform hover:scale-105 duration-500" style="transform: rotate(0deg);">
-                
+            <div class="relative flex flex-col items-center justify-start mx-8 md:mx-12 flex-shrink-0 group select-none transition-transform hover:scale-105 duration-500">
+                ${newBadgeHTML}
                 <!-- 畫框 -->
-                <div class="relative p-1 bg-[#1a1a1a] shadow-[10px_10px_0px_rgba(0,0,0,0.5)] border-2 border-[#D9CB0B]]">
+                <div class="relative p-1 bg-[#1a1a1a] shadow-[10px_10px_0px_rgba(0,0,0,0.5)] border-2 ${borderClass}">
                     <div class="relative overflow-hidden bg-gray-800 ${sizeClass}">
-                        <img src="${image.url}" alt="Exhibit" class="w-full h-full object-cover filter-custom group-hover:grayscale-0 transition-all duration-500" />
-                        <!-- 掃描線 -->
+                        <img 
+                            src="${item.url}" 
+                            alt="Exhibit" 
+                            onerror="handleImageError(this)"
+                            class="w-full h-full object-cover filter-custom group-hover:grayscale-0 transition-all duration-500" 
+                        />
                         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/3px-tile.png')] opacity-30 pointer-events-none mix-blend-overlay"></div>
                     </div>
                 </div>
-
-                <!-- 連接線 -->
                 <div class="h-12 w-[1px] border-l-2 border-dashed border-[#D9CB0B]/50 my-2 z-0"></div>
-
-                <!-- 展牌 -->
                 <div class="relative z-10 bg-[#e8e8e8] p-4 w-64 shadow-[8px_8px_0px_#D9CB0B] border-2 border-black flex flex-col gap-2 transform transition-transform group-hover:-translate-y-1">
                     <div class="absolute top-0 right-0 w-4 h-4 bg-black"></div>
-                    
-                    <div class="flex justify-between items-center border-b-2 border-black pb-2 mb-1">
-                    </div>
-                    <p class="font-bold text-black text-lg leading-relaxed font-sans tracking-tight">
-                        ${comment}
+                    <p class="font-bold text-black text-lg leading-relaxed font-sans tracking-tight line-clamp-3">
+                        ${displayText}
+                    </p>
+                     <p class="text-right text-xs font-bold text-gray-600">
+                        ${authorText}
                     </p>
                     <div class="flex justify-between items-end mt-2">
                         <span class="h-1 w-8 bg-black"></span>
                         <div class="text-[10px] text-gray-500 font-mono font-bold">
-                        #${id}
+                        #${item.id || '0000'}
                         </div>
                     </div>
                 </div>
@@ -220,30 +220,109 @@
             `;
         }
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
+        // 渲染跑馬燈內容
+        function renderMarquee(imagesData, isUpdate = false) {
             const container = document.getElementById('marquee-content');
-            let contentHTML = '';
 
-            // 準備數據 (3組以確保無縫滾動)
-            const generatedExhibits = MOCK_IMAGES.map((img, index) => ({
-                id: img.id || `KAGI-${1000 + index}`,
-                image: img,
-                comment: AI_COMMENTS[index % AI_COMMENTS.length]
-            }));
+            // 決定要使用的資料
+            let displayList = (imagesData && imagesData.length > 0) ? imagesData : DEFAULT_IMAGES;
 
-            // 生成 HTML (重複 3 次)
-            for (let i = 0; i < 3; i++) {
-                generatedExhibits.forEach((item) => {
-                    contentHTML += createExhibitHTML(item.image, item.comment, item.id);
-                });
+            // 產生 HTML
+            // 這裡不需要複製兩份 (Duplicate)，因為我們是從 100vw 開始跑
+            // 如果要無縫循環，通常需要更複雜的 JS 計算，但「從右側入場」最簡單的方式就是讓它跑完一輪再重來
+            // 為了讓畫面豐富一點，如果圖片太少，我們還是重複幾次
+
+            // 確保第一張是 New (如果有的話)
+            let exhibitsHTML = displayList.map((item, index) => {
+                const isNewItem = isUpdate && index === 0;
+                return createExhibitHTML(item, isNewItem);
+            }).join('');
+
+            let contentHTML = exhibitsHTML;
+
+            // 如果圖片少於 3 張，多複製幾次填滿畫面
+            if (displayList.length < 3) {
+                contentHTML += exhibitsHTML + exhibitsHTML;
             }
 
-            // 插入 DOM
+            // 更新 DOM
+            // 這一步非常關鍵：當 innerHTML 改變時，CSS 動畫會自動重置為 0%
+            // 而我們的 0% 是 translateX(100vw)，也就是從畫面最右邊外側開始
+            // 所以新的圖片（列表的第一張）會帶頭滑進來
             container.innerHTML = contentHTML;
 
-            // 渲染圖標
-            lucide.createIcons();
+            // 更新圖標
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        // 從後端獲取最新資料
+        async function fetchGalleryData() {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+
+            try {
+                // 呼叫 API (加上時間戳記防止快取)
+                const response = await fetch(`/lut2/gallery-data?t=${new Date().getTime()}`);
+                const data = await response.json();
+
+                if (data && data.images && data.images.length > 0) {
+                    const newLatestId = data.images[0].id;
+
+                    // 比對 ID：如果有新圖片
+                    if (newLatestId !== latestImageId) {
+                        console.log(`New image detected! ID: ${newLatestId}`);
+                        latestImageId = newLatestId;
+
+                        // 重繪畫面
+                        // 這會觸發動畫重置，最新的圖片 (Array Index 0) 會帶頭從右邊出現
+                        renderMarquee(data.images, true);
+
+                        // 狀態提示
+                        statusText.innerText = "NEW_ARRIVAL_SYNCED";
+                        statusText.classList.add('text-[#D9CB0B]');
+                        statusDot.classList.add('scale-150');
+
+                        setTimeout(() => {
+                            statusText.innerText = "LIVE_FEED_ONLINE";
+                            statusText.classList.remove('text-[#D9CB0B]');
+                            statusDot.classList.remove('scale-150');
+                        }, 3000);
+                    }
+                }
+
+                statusDot.classList.remove('bg-red-500');
+                statusDot.classList.add('bg-[#D9CB0B]', 'animate-pulse');
+
+            } catch (error) {
+                console.error("Fetch error:", error);
+                statusText.innerText = "CONNECTION_LOST";
+                statusDot.classList.remove('bg-[#D9CB0B]', 'animate-pulse');
+                statusDot.classList.add('bg-red-500');
+            }
+        }
+
+        // 初始化與定時器
+        document.addEventListener('DOMContentLoaded', () => {
+            let initialData = [];
+            if (typeof window.INITIAL_IMAGES === 'string') {
+                try {
+                    initialData = JSON.parse(window.INITIAL_IMAGES);
+                } catch (e) { initialData = []; }
+            } else if (Array.isArray(window.INITIAL_IMAGES)) {
+                initialData = window.INITIAL_IMAGES;
+            }
+
+            if (initialData.length > 0) {
+                latestImageId = initialData[0].id;
+            }
+
+            // 初次渲染
+            renderMarquee(initialData, false);
+
+            // 每 5 秒檢查一次是否有新圖
+            setInterval(fetchGalleryData, 5000);
         });
     </script>
 </body>

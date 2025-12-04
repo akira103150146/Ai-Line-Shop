@@ -26,29 +26,39 @@ def get_fang_qing_mian(request):
 
 def get_upload_page(request):
     """顯示上傳頁面"""
-    return render(request, 'lut2/upload.html')
-
+    return render(request, 'lut2/upload_random.html')
 
 def get_gallery_page(request):
     """顯示畫廊頁面，從資料庫載入上傳圖片"""
     images = []
+    # 取出所有圖片，最新的在前
     uploaded_images = UploadedImage.objects.order_by('-created_at')
     
     for item in uploaded_images:
         image_url = item.get_image_url()
-        if not image_url and item.image_base64:
-            image_url = item.get_base64_data_uri()
         
         if not image_url:
             continue
         
+        # 處理詩詞顯示：如果沒有儲存詩詞，使用預設文字
+        comment = item.poem_content
+        if not comment:
+            comment = "捕捉到了決定性的瞬間！大師級作品。"
+        else:
+            # 簡單處理：移除（節錄）字樣，讓畫廊顯示乾淨一點
+            comment = comment.replace("（節錄）", "")
+
         images.append({
             "url": image_url,
             "type": item.orientation or 'portrait',
-            "id": f"KAGI-{item.id:04d}"
+            "id": f"KAGI-{item.id:04d}",
+            # 將儲存的詩詞資訊傳給前端
+            "comment": comment, 
+            "title": item.poem_title or "",
+            "author": item.poem_author or ""
         })
     
-    # 確保 images_json 總是有效的 JSON 字符串（即使是空數組）
+    # 確保 images_json 總是有效的 JSON 字符串
     images_json = json.dumps(images, ensure_ascii=False)
     
     context = {
@@ -61,124 +71,102 @@ def get_gallery_page(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def upload_image(request):
-    """處理圖片上傳
-    
-    支援兩種方式：
-    1. 文件上傳（multipart/form-data）：使用 request.FILES
-    2. Base64 上傳（application/json）：使用 request.body
-    """
+    """處理圖片上傳 (包含隨機詩詞儲存)"""
     try:
-        # 確保 media 目錄存在
         media_root = settings.MEDIA_ROOT
         if not os.path.exists(media_root):
             os.makedirs(media_root, exist_ok=True)
         
-        # 確保子目錄存在
         for orientation in ['portrait', 'landscape']:
             subdir = os.path.join(media_root, 'lut2', orientation)
             if not os.path.exists(subdir):
                 os.makedirs(subdir, exist_ok=True)
         
-        # 方式1：處理文件上傳（推薦）
+        # 僅支援處理文件上傳
         if 'image' in request.FILES:
             image_file = request.FILES['image']
             orientation = request.POST.get('orientation', 'portrait')
             
-            # 安全驗證：文件大小限制（10MB）
-            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            # --- 接收前端傳來的隨機詩詞 ---
+            poem_title = request.POST.get('poem_title', '')
+            poem_author = request.POST.get('poem_author', '')
+            poem_content = request.POST.get('poem_content', '')
+            # ---------------------------
+
+            # 驗證
+            MAX_FILE_SIZE = 10 * 1024 * 1024
             if image_file.size > MAX_FILE_SIZE:
-                return JsonResponse({
-                    'success': False,
-                    'message': f'文件大小超過限制（最大 {MAX_FILE_SIZE // 1024 // 1024}MB）'
-                }, status=400)
+                return JsonResponse({'success': False, 'message': '文件太大'}, status=400)
             
-            # 安全驗證：文件類型檢查
             allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
             if image_file.content_type not in allowed_types:
-                return JsonResponse({
-                    'success': False,
-                    'message': '不支援的文件類型。僅支援：JPEG, PNG, GIF, WebP'
-                }, status=400)
+                return JsonResponse({'success': False, 'message': '不支援的格式'}, status=400)
             
-            # 安全驗證：文件擴展名檢查
-            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-            file_ext = os.path.splitext(image_file.name)[1].lower()
-            if file_ext not in allowed_extensions:
-                return JsonResponse({
-                    'success': False,
-                    'message': '不支援的文件擴展名'
-                }, status=400)
-            
-            # 驗證方向
             if orientation not in ['portrait', 'landscape']:
                 orientation = 'portrait'
             
-            # 創建模型實例並儲存文件
+            # 創建並儲存 (包含詩詞)
             uploaded_image = UploadedImage(
                 orientation=orientation,
                 image=image_file,
-                original_filename=image_file.name
+                original_filename=image_file.name,
+                poem_title=poem_title,
+                poem_author=poem_author,
+                poem_content=poem_content
             )
             uploaded_image.save()
             
             return JsonResponse({
                 'success': True,
-                'message': '圖片上傳成功！',
+                'message': '上傳成功！',
                 'id': uploaded_image.id,
                 'image_url': uploaded_image.get_image_url(),
-                'orientation': uploaded_image.orientation
-            })
-        
-        # 方式2：處理 Base64 上傳
-        elif request.content_type and 'application/json' in request.content_type:
-            data = json.loads(request.body)
-            image_base64 = data.get('image_base64', '')
-            orientation = data.get('orientation', 'portrait')
-            original_filename = data.get('filename', 'uploaded_image')
-            
-            if not image_base64:
-                return JsonResponse({
-                    'success': False,
-                    'message': '缺少圖片資料'
-                }, status=400)
-            
-            # 驗證方向
-            if orientation not in ['portrait', 'landscape']:
-                orientation = 'portrait'
-            
-            # 移除 base64 前綴（如果有的話）
-            if ',' in image_base64:
-                image_base64 = image_base64.split(',')[1]
-            
-            # 創建模型實例並儲存 base64
-            uploaded_image = UploadedImage(
-                orientation=orientation,
-                image_base64=image_base64,
-                original_filename=original_filename
-            )
-            uploaded_image.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': '圖片上傳成功！（Base64 格式）',
-                'id': uploaded_image.id,
-                'orientation': uploaded_image.orientation
+                'poem_title': uploaded_image.poem_title 
             })
         
         else:
-            return JsonResponse({
-                'success': False,
-                'message': '請提供圖片檔案或 Base64 資料'
-            }, status=400)
+            return JsonResponse({'success': False, 'message': '請提供圖片檔案'}, status=400)
             
     except Exception as e:
-        # 記錄詳細錯誤信息（用於調試）
         error_trace = traceback.format_exc()
         print(f"Upload error: {str(e)}")
         print(f"Traceback: {error_trace}")
-        
         return JsonResponse({
             'success': False,
-            'message': f'上傳失敗：{str(e)}',
-            'error_type': type(e).__name__
+            'message': f'上傳失敗：{str(e)}'
         }, status=500)
+
+def get_gallery_data(request):
+    """
+    API: 回傳畫廊資料 (JSON 格式)，供前端定時更新使用
+    """
+    images = []
+    # 取出所有圖片，最新的在前
+    uploaded_images = UploadedImage.objects.order_by('-created_at')
+    
+    for item in uploaded_images:
+        image_url = item.get_image_url()
+        
+        if not image_url:
+            continue
+        
+        # 處理詩詞顯示
+        comment = item.poem_content
+        if not comment:
+            comment = "捕捉到了決定性的瞬間！大師級作品。"
+        else:
+            comment = comment.replace("（節錄）", "")
+
+        images.append({
+            "url": image_url,
+            "type": item.orientation or 'portrait',
+            "id": f"KAGI-{item.id:04d}",
+            "comment": comment, 
+            "title": item.poem_title or "",
+            "author": item.poem_author or ""
+        })
+    
+    return JsonResponse({
+        "images": images,
+        "count": len(images)
+    })

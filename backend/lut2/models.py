@@ -13,12 +13,7 @@ def upload_to(instance, filename):
 
 
 class UploadedImage(models.Model):
-    """上傳的圖片模型
-    
-    支援兩種儲存方式：
-    1. 文件系統儲存（推薦）：使用 image 欄位，儲存在 MEDIA_ROOT
-    2. Base64 儲存：使用 image_base64 欄位，將 base64 字串存在資料庫
-    """
+    """上傳的圖片模型"""
     
     ORIENTATION_CHOICES = [
         ('portrait', '直式'),
@@ -33,7 +28,7 @@ class UploadedImage(models.Model):
         verbose_name='方向'
     )
     
-    # 方式1：文件系統儲存（推薦）- 使用 ImageField
+    # 圖片儲存 (僅保留文件系統儲存)
     image = models.ImageField(
         upload_to=upload_to,
         null=True,
@@ -41,13 +36,27 @@ class UploadedImage(models.Model):
         verbose_name='圖片檔案'
     )
     
-    # 方式2：Base64 儲存（備選）- 使用 TextField
-    # 如果使用 base64，請將 image 設為 null，並使用 image_base64
-    image_base64 = models.TextField(
+    # --- 新增：詩詞資訊 ---
+    poem_title = models.CharField(
+        max_length=100,
         null=True,
         blank=True,
-        verbose_name='Base64 圖片資料'
+        verbose_name='詩詞標題'
     )
+
+    poem_author = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name='詩詞作者'
+    )
+
+    poem_content = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='詩詞內容'
+    )
+    # -------------------
     
     # 元資料
     original_filename = models.CharField(
@@ -80,22 +89,3 @@ class UploadedImage(models.Model):
         if self.image:
             return self.image.url
         return None
-    
-    def get_image_base64(self):
-        """取得 base64 格式的圖片（如果使用 base64 儲存）"""
-        return self.image_base64
-    
-    def get_base64_data_uri(self):
-        """組出 data URI，方便前端直接顯示 base64 圖片"""
-        if not self.image_base64:
-            return None
-        mime_type = 'image/jpeg'
-        if self.original_filename:
-            ext = os.path.splitext(self.original_filename)[1].lower()
-            if ext in ['.png']:
-                mime_type = 'image/png'
-            elif ext in ['.gif']:
-                mime_type = 'image/gif'
-            elif ext in ['.webp']:
-                mime_type = 'image/webp'
-        return f"data:{mime_type};base64,{self.image_base64}"
