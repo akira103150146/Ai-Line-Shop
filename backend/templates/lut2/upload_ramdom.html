@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KAGI LUTS -亂數</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #111111;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        /* 隱藏原生 Input */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* 掃描線動畫 */
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .animate-scan {
+            animation: scan 2s linear infinite;
+        }
+
+        /* 點擊效果 */
+        .active-press:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #D9CB0B !important;
+        }
+
+        /* 錯誤狀態的紅色按鈕 */
+        .error-press:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #FF3333 !important;
+        }
+
+        /* 淡入動畫 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative selection:bg-[#D9CB0B] selection:text-black">
+
+    <!-- 背景裝飾 -->
+    <div class="absolute inset-0 z-0 opacity-20 pointer-events-none" 
+         style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px;">
+    </div>
+
+    <!-- 頂部標題 -->
+    <header class="relative z-20 bg-black/90 border-b border-[#333] p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-[#D9CB0B] text-black p-1.5 border border-white">
+                <i data-lucide="upload-cloud" width="20" height="20"></i>
+            </div>
+            <h1 class="text-xl font-black italic tracking-tighter">
+                KAGI  <span class="text-[#D9CB0B]"> LUTS </span>
+            </h1>
+        </div>
+        <div id="system-status" class="text-[10px] font-mono text-[#D9CB0B] border border-[#333] px-2 py-1 bg-black">
+            SYS_READY
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-1 relative z-10 flex flex-col items-center justify-center p-6 gap-6 w-full max-w-md mx-auto">
+
+        <!-- ==================== VIEW 1: 上傳介面 ==================== -->
+        <div id="view-upload" class="w-full flex flex-col gap-6 transition-opacity duration-300">
+            
+            <!-- 1. 尺寸選擇控制台 -->
+            <div class="w-full grid grid-cols-2 gap-4">
+                <!-- 直式按鈕 -->
+                <button onclick="setOrientation('portrait')" id="btn-portrait" 
+                    class="active-press relative group p-3 border-2 border-[#D9CB0B] bg-[#D9CB0B] text-black transition-all shadow-[4px_4px_0px_#333]">
+                    <div class="flex flex-col items-center gap-1">
+                        <i data-lucide="smartphone" class="w-6 h-6"></i>
+                        <span class="font-black text-xs tracking-wider">PORTRAIT</span>
+                        <span class="text-[10px] font-mono opacity-80">直式</span>
+                    </div>
+                    <div class="check-mark absolute top-1 right-1 opacity-100">
+                        <i data-lucide="check-circle-2" width="14"></i>
+                    </div>
+                </button>
+
+                <!-- 橫式按鈕 -->
+                <button onclick="setOrientation('landscape')" id="btn-landscape" 
+                    class="active-press relative group p-3 border-2 border-[#333] bg-[#1a1a1a] text-gray-400 transition-all shadow-[4px_4px_0px_#000]">
+                    <div class="flex flex-col items-center gap-1">
+                        <i data-lucide="monitor" class="w-6 h-6"></i>
+                        <span class="font-black text-xs tracking-wider">LANDSCAPE</span>
+                        <span class="text-[10px] font-mono opacity-80">橫式</span>
+                    </div>
+                    <div class="check-mark absolute top-1 right-1 opacity-0">
+                        <i data-lucide="check-circle-2" width="14"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- 2. 上傳預覽區 -->
+            <div class="relative w-full flex justify-center items-center py-4">
+                <div id="frame-container" class="relative transition-all duration-500 ease-out bg-[#1a1a1a] border-2 border-[#D9CB0B] shadow-[8px_8px_0px_rgba(0,0,0,0.8)] p-1 w-[280px] h-[380px]">
+                    <div class="relative w-full h-full bg-gray-900 overflow-hidden cursor-pointer group" onclick="triggerUpload()">
+                        
+                        <!-- 預設狀態 -->
+                        <div id="placeholder-ui" class="absolute inset-0 flex flex-col items-center justify-center text-[#D9CB0B] gap-4 z-10 transition-opacity duration-300">
+                            <div class="w-20 h-20 border-2 border-dashed border-[#D9CB0B] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-black/50 backdrop-blur-sm">
+                                <i data-lucide="plus" width="48" height="48"></i>
+                            </div>
+                            <p class="text-xs font-mono tracking-widest text-center">
+                                TAP TO UPLOAD <br>
+                                <span class="opacity-50 text-[10px]">JPG / PNG</span>
+                            </p>
+                        </div>
+
+                        <!-- 圖片預覽 -->
+                        <img id="image-preview" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 filter contrast-125 grayscale-[0.2]" alt="Preview">
+                        
+                        <!-- 裝飾 -->
+                        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/3px-tile.png')] opacity-20 pointer-events-none z-20"></div>
+                        <div id="scan-line" class="hidden absolute inset-0 border-b-2 border-[#D9CB0B]/50 z-30 animate-scan pointer-events-none bg-gradient-to-b from-transparent to-[#D9CB0B]/10 h-full"></div>
+                    </div>
+                    <!-- 邊角 -->
+                    <div class="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-[#D9CB0B]"></div>
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-[#D9CB0B]"></div>
+                </div>
+            </div>
+
+            <!-- 隱藏 Input -->
+            <input type="file" id="file-upload" accept="image/*" onchange="handleFileSelect(event)">
+
+            <!-- 底部提示 -->
+            <div class="w-full text-center">
+                <p id="status-text" class="text-[#D9CB0B] font-mono text-xs animate-pulse">
+                    WAITING FOR INPUT...
+                </p>
+            </div>
+
+            <!-- 確認按鈕 (PROCESS) -->
+            <button id="confirm-btn" onclick="startAnalysis()" class="hidden w-full bg-[#D9CB0B] text-black font-black text-lg py-4 border-2 border-white shadow-[4px_4px_0px_#fff] active:translate-y-1 active:shadow-none transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                <i data-lucide="cpu"></i> START ANALYSIS
+            </button>
+        </div>
+
+        <!-- ==================== VIEW 2: 結果介面 (預設隱藏) ==================== -->
+        <div id="view-result" class="hidden w-full flex flex-col gap-6 items-center animate-fade-in">
+            
+            <!-- 結果卡片 (成功) -->
+            <div id="result-card-success" class="hidden w-full bg-[#111] border border-[#333] p-6 relative overflow-hidden">
+                <!-- 裝飾背景文字 -->
+                <div class="absolute -right-4 -top-4 text-8xl font-black text-[#D9CB0B] opacity-10 italic select-none">
+                    POEM
+                </div>
+
+                <div class="relative z-10 flex flex-col gap-4">
+                    <!-- 節錄詩句 -->
+                    <div class="border-l-4 border-[#D9CB0B] pl-4 py-2">
+                        <h2 id="res-snippet" class="text-2xl md:text-3xl font-black text-white leading-tight font-serif tracking-wide" style="text-shadow: 0 0 10px rgba(217,203,11,0.3);">
+                            <!-- JS 填入 -->
+                        </h2>
+                    </div>
+                    
+                    <!-- 來源資訊 -->
+                    <div class="flex flex-col gap-1 mt-2">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-[#D9CB0B] text-black text-[10px] px-1 font-bold">TITLE</span>
+                            <span id="res-title" class="text-[#D9CB0B] font-bold text-lg"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-[#333] text-white text-[10px] px-1 font-bold">AUTHOR</span>
+                            <span id="res-author" class="text-gray-400 font-mono text-sm"></span>
+                        </div>
+                    </div>
+
+                    <!-- 圖片縮圖 (作為憑證) -->
+                    <div class="mt-4 w-full h-32 bg-gray-800 relative overflow-hidden border border-[#333] grayscale opacity-80">
+                         <img id="res-mini-img" class="w-full h-full object-cover">
+                         <div class="absolute bottom-0 right-0 bg-black text-[#D9CB0B] text-[10px] px-2 py-1 font-mono">
+                             MATCH_CONFIRMED
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 結果卡片 (失敗) -->
+            <div id="result-card-fail" class="hidden w-full bg-[#1a0000] border-2 border-[#FF3333] p-6 relative overflow-hidden shadow-[0_0_20px_rgba(255,51,51,0.2)]">
+                <div class="flex flex-col items-center text-center gap-4 py-6">
+                    <i data-lucide="alert-triangle" class="text-[#FF3333] w-16 h-16 animate-pulse"></i>
+                    <h2 class="text-2xl font-black text-[#FF3333] tracking-widest">匹配失敗</h2>
+                    <p class="text-red-300 font-mono text-sm leading-relaxed">
+                        與文學家們的靈魂頻率暫無匹配<br>
+                        請換張照片後再試一次看看～
+                    </p>
+                    <div class="w-full h-[1px] bg-[#FF3333]/30 my-2"></div>
+                    <p class="text-[10px] text-[#FF3333] opacity-60 font-mono">ERR_CODE: IMG_NO_MATCH_404</p>
+                </div>
+            </div>
+
+            <!-- 重新開始按鈕 -->
+            <button onclick="resetUI()" class="w-full bg-transparent text-white font-bold text-sm py-4 border border-[#333] hover:bg-[#222] active:bg-[#000] transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                <i data-lucide="rotate-ccw"></i> UPLOAD NEW PHOTO 重新上傳
+            </button>
+
+        </div>
+
+    </main>
+
+    <script>
+        // 初始化 Icons
+        lucide.createIcons();
+
+        // 模擬資料庫 (格式: 作者:詩名:詩句)
+        const POEM_DATABASE = [
+    {
+        "author": "張李德和",
+        "title": "脫塵齋早菊",
+        "snippet": "此地黃花氣節高，騷人遣興嘯吟豪。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "脫塵齋早菊",
+        "snippet": "愛他傲骨偏清健，痼癖千秋且學陶。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊壺仙花果園",
+        "snippet": "壺裡風光別有天，香吹曲沼共留連。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊壺仙花果園",
+        "snippet": "向榮花果猶如昔，不見豪吟老大仙。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊半天岩",
+        "snippet": "突兀橫空露翠巔，紫雲飄渺佛龕前。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊半天岩",
+        "snippet": "古香鐵幹雙株合，來作羅浮夢裡仙。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "老蟬",
+        "snippet": "淒然飲露柳梢中，歷盡炎威又冷風。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "老蟬",
+        "snippet": "漫道當年其女恨，世情我亦感無窮。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊蘭潭即景",
+        "snippet": "相邀安步到蘭潭，席坐自來水室安。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊蘭潭即景",
+        "snippet": "放眼青嵐雲出岫，裙釵帽頂影成三。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "康樂暮鼓",
+        "snippet": "一鞭殘照喜同趨，不盡淵淵康樂區。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "康樂暮鼓",
+        "snippet": "博物智開承遠計，網球體健展宏模。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "康樂暮鼓",
+        "snippet": "揚風巧布光文室，化俗長懸吳鳳圖。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "康樂暮鼓",
+        "snippet": "贏得遊人齊拍手，此間便是小方壺",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "橡苑聽鶯",
+        "snippet": "森然橡木勢凌霄，斗酒雙柑雅興飄。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "橡苑聽鶯",
+        "snippet": "嚦嚦遷喬情自逸，交交出谷景偏饒。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "橡苑聽鶯",
+        "snippet": "涼陰三夏宜騷客，膏澤千畦潤穀苗。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "橡苑聽鶯",
+        "snippet": "回首荷香憐寂寞，倚笻營址惹魂銷。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "彌陀晨鐘",
+        "snippet": "一杵敲殘曙色呈，寺臨八掌近桃城。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "彌陀晨鐘",
+        "snippet": "梵音斷續麟屏靜，逸韻悠揚玉枕清。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "彌陀晨鐘",
+        "snippet": "寶座蓮香醒客夢，線橋人度趁雞鳴。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "彌陀晨鐘",
+        "snippet": "幾回誤作寒山響，瀏喨超塵警眾生。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "鷺橋跨浪",
+        "snippet": "憑欄遠眺立橋頭，萬疊煙嵐眼底收。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "鷺橋跨浪",
+        "snippet": "雨急橫流翻白浪，風高飛鷺點青疇。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "鷺橋跨浪",
+        "snippet": "玉峰雪映群巒麗，八掌水環孤寺幽。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "鷺橋跨浪",
+        "snippet": "絕好南郊開勝景，長虹斜挂碧中秋。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "林場風清",
+        "snippet": "滿場媚綠茁新芽，習習涼生別樣佳。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "林場風清",
+        "snippet": "香繞瑤臺花爛熳，影濃水曲樹交叉。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "林場風清",
+        "snippet": "歌翻蝶板情偏爽，韻叶鶯簧興不賒。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "林場風清",
+        "snippet": "寄語園丁勤細護，好將梁棟獻邦家。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "公園雨霽",
+        "snippet": "公園絕好雨餘天，柳媚花嬌美自然。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "公園雨霽",
+        "snippet": "碑記福康勳永著，樓揚太保景增妍。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "公園雨霽",
+        "snippet": "小橋流水清如許，曲徑斜陽趣亦仙。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "公園雨霽",
+        "snippet": "遊戲人間金粉地，何當僻靜最堪憐。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "檜沼垂綸",
+        "snippet": "方塘潤棟水粼粼，時有高人下釣綸。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "檜沼垂綸",
+        "snippet": "細蹙浪花鱗甲動，橫陳檜木鷺鷗親。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "檜沼垂綸",
+        "snippet": "太公功著興周業，嚴子德崇傲富春。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "檜沼垂綸",
+        "snippet": "善運滑車鈞斛力，民生國計兩堪珍。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "蘭潭泛月",
+        "snippet": "紅毛舊址一壺天，在月逍遙興欲仙。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "蘭潭泛月",
+        "snippet": "青鎖煙嵐沉萬籟，白流玉鏡現雙圓。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "蘭潭泛月",
+        "snippet": "獅崎客愛窺燈市，象嶺人爭泊畫船。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "蘭潭泛月",
+        "snippet": "絕好岸梅清門月，吟香頹醉任癡癲。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊半天岩",
+        "snippet": "半天煙景半天浮，卅里桃城一望收。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊半天岩",
+        "snippet": "廟貌重新紫雲寺，慈航法雨仰千秋。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "率嘉義保甲婦女團襟山遠足",
+        "snippet": "風和日暖倚襟山，放眼獅球綠水灣。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "率嘉義保甲婦女團襟山遠足",
+        "snippet": "雅把辨當梅下喫，俗塵萬斛一齊刪。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "率嘉義保甲婦女團襟山遠足",
+        "snippet": "獅巒忽爾幻山莊，鳥道飛車似轉廊。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "率嘉義保甲婦女團襟山遠足",
+        "snippet": "他日湖成憑給水，市民卅萬得增強。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "率嘉義保甲婦女團襟山遠足",
+        "snippet": "天邊遠眺安平港，煙突沖霄烏樹林。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "率嘉義保甲婦女團襟山遠足",
+        "snippet": "一望瞭然如咫尺，湖船喜待泛梅陰。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "題雉",
+        "snippet": "雄王雌霸願無違，陳寶文章世所稀。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "題雉",
+        "snippet": "喜值太平新氣象，高原奮翮振朝飛。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "題犬",
+        "snippet": "戀主靈獒健，關心守夜頻。莫殘髀肉大，共享太平春。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "虎",
+        "snippet": "吞牛氣猛蓄心機，一嘯生風百獸微。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "虎",
+        "snippet": "漫作眈眈嵎可負，佇看櫻暴震天威。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "驅車一出迎春城，萬峰層疊競相迎。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "蜿蜒有巷分長短，翠竹搖空爽氣生。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "蘆厝園林串鷺夕，主人本是風騷客。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "名韁利鎖兩無關，日日此間樂自得。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "杖策高丘攬好風，觴流曲水掉孤篷。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "蟬聲鳥語玲瓏外，領略忘機興不窮。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "朝懸壺，暮棲止。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "臥欹玉枕山，安閒弄獅子。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "夏日遊鷺夕園賦呈文龍君",
+        "snippet": "君不見人生畢竟貴無求，悟徹無求便合休。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "默園訪菊",
+        "snippet": "高標晚節傲霜枝，燦爛秋光雅護持。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "默園訪菊",
+        "snippet": "羨煞主人饒逸韻，公餘把酒對東籬。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "市聲",
+        "snippet": "六街花樣競翻新，響逐和風到處春。",
+        "keywords": "嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "市聲",
+        "snippet": "誰坐琴堂揮妙腕，宮商續續散囂塵。",
+        "keywords": "嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "金魚",
+        "snippet": "尾搖秋水映苔潯，唼藻穿波又閃金。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "金魚",
+        "snippet": "圉圉知君欣得所，直將身世任浮沉。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "雙燕",
+        "snippet": "春風萬里競翩躚，心思依依畫棟前。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "雙燕",
+        "snippet": "最喜香巢無恙在，啣泥勤補有情天。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "脫塵齋賞菊",
+        "snippet": "直把幽齋署脫塵，黃花爛熳日相親。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "脫塵齋賞菊",
+        "snippet": "吾人自有忙中趣，逸氣迎秋樂性真。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "蝶",
+        "snippet": "栩栩復蘧蘧，飛花錦不如。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "蝶",
+        "snippet": "浮生原是夢，豔得啄香餘。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "蝶",
+        "snippet": "霜蕊香婀娜，翩翩舞翅舒。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "蝶",
+        "snippet": "分明飛咫尺，欲下復遲遲。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "競馬會",
+        "snippet": "騰沙起霧怒風號，喝彩聲中跑幾糟。恍惚馳鞭衝敵日，雄心豈怕雁門高。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "鬥雞",
+        "snippet": "五德禽中獨擅奇，振張爪嘴決雄雌。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "鬥雞",
+        "snippet": "戰場不計身生死，一樣軍人遇敵時。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "鬥雞",
+        "snippet": "鐵距花冠猛自持，爭雄未肯稍遲遲。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "鬥雞",
+        "snippet": "宮中曾見羅天陣，愧煞乘軒白鶴兒。",
+        "keywords": "動物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "石怪癖奇遇亦詭，山陬海噬窮搜彙。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "主人胸富五車書，日日此間蒸浩氣。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "等是紅羊歷劫身，水聲雲影培精神。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "驚天坼地嶒崚勢，睥睨塵寰若怒瞋。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "向晚煙嵐瀰漫橫，琴棋詩畫趣中生。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "清泉滴滴皆珠玉，好鳥枝頭嚦嚦鳴。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "一石菊紋放玉瓣，一石如猴更冠冕。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "神工鬼斧令人驚，搖曳雲頭心不轉",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "百丈雲濤百尺樓，桐陰垂釣鳳池頭。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "正疑八陣圖中立，又訝九盤山下遊。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "一樹桃花豔似碧，三眠柳絮垂簾白。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "雲間意氣仰元龍，蔽芾蒼生欽召伯。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "突兀猶含太古煙，前峰後峰雁字連。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "中原逐鹿無休日，和樂誰如昆仲賢。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "炎天不熱蘚生壁，自是雲搏與水擊。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "倒影恍忽老蛟騰，亭邊嘯月弄漁笛。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "吹壎吹篪嚮沖霄，鐵畫銀鉤粲石橋。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "砌下蛩吟應躡屐，聞貪天籟步深宵。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "我嘗樓頭一望康衢上，滾滾人煙呈萬狀。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "擾攘還如過隙駒，繁華競巧翻新樣。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "噫嘘土精磊落猶千載，人生似夢感怏怏。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "又嘗靜看窗邊螻蟻群，微蟲底事亦紛紛。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "海枯地骨終不爛，拜石何須笑米君。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "不聞乎滄海有遺珠，不聞乎沉網取珊瑚。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "見說笥山上,石雁浮在湖。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "亦有聽經頭會點，亦有石馬叱能趨。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "劍花垂手億大娘，削石如泥露寒光。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "知君珍藏有巨闕，欲求磨洗試鏗鏘。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "或疑石出平泉界，滄桑一閱成一態。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "媧皇未辣補情天，奔馳風雨挺狂怪。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "羅山從此溯芳型，次第欣觀石上銘。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "水雲亭賞奇石作歌贈主人百樓無涯賢昆仲",
+        "snippet": "不減滄洲清淨境，崎嶇環峙水雲亭。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "琳琅閣春蘭",
+        "snippet": "嫩寒天氣艷陽嬌，日賞幽香逸興饒。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "琳琅閣春蘭",
+        "snippet": "箇裡紅塵飛不到，且將素穎繪冰綃。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "十字樓夜棋",
+        "snippet": "雄爭黑白兩鋒交，盡把浮生俗慮拋。",
+        "keywords": "人物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "十字樓夜棋",
+        "snippet": "自是忘機神不亂，更深猶聽子聲敲。",
+        "keywords": "人物, 嘉義市"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊北香湖即景",
+        "snippet": "天然衣服打漁圖，小坐榕陰興不孤。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "遊北香湖即景",
+        "snippet": "莫怪臨淵思結網，雅收妙理契吾儒。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "張李德和",
+        "title": "冷紅室看雲",
+        "snippet": "美人蒼狗幻無休，出岫何心任去留。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "冷紅室看雲",
+        "snippet": "腸斷冷紅翹首處，眼簾輕捲散閒愁。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "面山樓新桃",
+        "snippet": "露井初開色自佳，嬌姿灼灼映蕭齋。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "張李德和",
+        "title": "面山樓新桃",
+        "snippet": "面山樓外春如海，更羨頭銜萬壽排。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山謠",
+        "snippet": "諸羅之山青如柳，遊人駐馬都昂首。（節錄）",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山謠",
+        "snippet": "諸羅之山誰匹锅，峨眉崆峒差堪友。（節錄）",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山謠",
+        "snippet": "拏雲高聳欲擎天，踏雪吟哦爭抗手。（節錄）",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山謠",
+        "snippet": "逍遙有客披煩襟，爛醉猶呼百壺酒。（節錄）",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "適園主人蔡漁笙索題該園賦此以應",
+        "snippet": "結構幽居遠市闤，半村半郭足怡顏。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "適園主人蔡漁笙索題該園賦此以應",
+        "snippet": "此閒的是忘機地，毋待腰金別買山。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "適園主人蔡漁笙索題該園賦此以應",
+        "snippet": "園闢東郊占地寬，花香鳥語四時歡。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "適園主人蔡漁笙索題該園賦此以應",
+        "snippet": "主人才調原清逸，日課黃庭學煉丹。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：蘭潭泛月",
+        "snippet": "一潭澄徹水如天，放眼平湖景萬千。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：蘭潭泛月",
+        "snippet": "最好中秋明月夜，紅毛埤上泛遊船。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：檜沼垂綸",
+        "snippet": "檜沼風光景最幽，垂綸人坐綠陰頭。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：檜沼垂綸",
+        "snippet": "一聲欸乃清歌起，驚起沙鷗逐水流。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：彌陀曉鐘",
+        "snippet": "彌陀古寺在山阿，天外霜鐘響剎那。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：彌陀曉鐘",
+        "snippet": "一百八聲醒客夢，驚回首處曙光多。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：康樂暮鼓",
+        "snippet": "樓臺高聳絕塵埃，暮鼓聲沉響似雷。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：康樂暮鼓",
+        "snippet": "康樂區中多喚醒，迷途遊子早歸來。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：公園雨霽",
+        "snippet": "公園花木正繁華，雨過增光景色佳。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：公園雨霽",
+        "snippet": "好是一番新氣象，斜陽紅照萬千家。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：林場風清",
+        "snippet": "無邊林樹鬱蒼蒼，消夏清遊好地方。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：林場風清",
+        "snippet": "滿耳蟬聲高柳外，薰風拂面一襟涼。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：鷺橋跨浪",
+        "snippet": "鷺橋橫跨水雲鄉，滾滾溪流一望長。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：鷺橋跨浪",
+        "snippet": "最愛晚來天欲雪，滿天飛鷺織斜陽。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：橡苑聽鶯",
+        "snippet": "橡園古木不知年，中有黃鸝語並肩。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "羅山八景：橡苑聽鶯",
+        "snippet": "喚醒人間春夢覺，好音還似奏管絃。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題嘉義公園",
+        "snippet": "山光水色四時宜，最好清晨與暮時。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題嘉義公園",
+        "snippet": "小鳥枝頭歌婉轉，名花階下鬥芳菲。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題嘉義公園",
+        "snippet": "小橋流水清塵慮，曲徑通幽發逸思。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題嘉義公園",
+        "snippet": "公餘之暇來遊賞，消受清閒樂在茲。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題北香湖",
+        "snippet": "北香湖上水連天，風景幽清絕俗緣。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題北香湖",
+        "snippet": "垂柳陰中閒把釣，荷花香裡學神仙。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題北香湖",
+        "snippet": "夕陽返照紅千頃，皓月當空碧萬千。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題北香湖",
+        "snippet": "此處亦堪稱勝景，何須萬里問桃源。",
+        "keywords": "嘉義市, 地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "遊阿里山",
+        "snippet": "阿里山高入碧空，森林鬱蒼翠無窮。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "遊阿里山",
+        "snippet": "神木參天二千載，靈泉亦可洗心胸。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "遊阿里山",
+        "snippet": "祝山觀日奇觀顯，塔山雲海景自雄。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "遊阿里山",
+        "snippet": "不用登臨方覺好，乘雲直上最高峰。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題吳鳳廟",
+        "snippet": "社口莊前廟貌新，英靈千古仰如神。",
+        "keywords": "人物, 嘉義市"
+    },
+    {
+        "author": "林玉書",
+        "title": "題吳鳳廟",
+        "snippet": "殺身成仁留偉績，革除惡俗澤斯民。",
+        "keywords": "人物, 嘉義市"
+    },
+    {
+        "author": "林玉書",
+        "title": "題吳鳳廟",
+        "snippet": "紅衣尚在驚番膽，白馬猶疑護漢臣。",
+        "keywords": "人物, 嘉義市"
+    },
+    {
+        "author": "林玉書",
+        "title": "題吳鳳廟",
+        "snippet": "香火巍峨昭日月，千秋萬世祀通津。",
+        "keywords": "人物, 嘉義市"
+    },
+    {
+        "author": "林玉書",
+        "title": "題半天岩紫雲寺",
+        "snippet": "半天岩上紫雲生，古寺巍峨畫不成。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題半天岩紫雲寺",
+        "snippet": "佛火長明昭日月，鐘聲遠度醒迷情。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題半天岩紫雲寺",
+        "snippet": "山花獻笑迎遊客，林鳥歡呼送好聲。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "題半天岩紫雲寺",
+        "snippet": "此地清幽真淨土，何須萬里覓蓬瀛。",
+        "keywords": "地景（山水）"
+    },
+    {
+        "author": "林玉書",
+        "title": "祝嘉義扶輪社創立十週年紀念",
+        "snippet": "扶輪嘉義肇端先，轉瞬光陰已十年。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "祝嘉義扶輪社創立十週年紀念",
+        "snippet": "服務為懷遵旨趣，犧牲是念結良緣。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "祝嘉義扶輪社創立十週年紀念",
+        "snippet": "匡扶社會功無量，輪轉乾坤志益堅。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "祝嘉義扶輪社創立十週年紀念",
+        "snippet": "今日歡呼同慶祝，前程遠大更無邊。",
+        "keywords": "人物, 嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "賀嘉義市昇格省轄市",
+        "snippet": "嘉義昇格慶光榮，建設宏規日日新。",
+        "keywords": "嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "賀嘉義市昇格省轄市",
+        "snippet": "文化中心欣創立，繁榮市況倍精神。",
+        "keywords": "嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "賀嘉義市昇格省轄市",
+        "snippet": "交通發達通四海，工商進步富斯民。",
+        "keywords": "嘉義市, 街道"
+    },
+    {
+        "author": "林玉書",
+        "title": "賀嘉義市昇格省轄市",
+        "snippet": "同心協力齊奮鬥，錦繡前程萬象春。",
+        "keywords": "嘉義市, 街道"
+    }
+];
+
+        // DOM 元素
+        const viewUpload = document.getElementById('view-upload');
+        const viewResult = document.getElementById('view-result');
+        const btnPortrait = document.getElementById('btn-portrait');
+        const btnLandscape = document.getElementById('btn-landscape');
+        const frameContainer = document.getElementById('frame-container');
+        const fileInput = document.getElementById('file-upload');
+        const imagePreview = document.getElementById('image-preview');
+        const placeholderUi = document.getElementById('placeholder-ui');
+        const scanLine = document.getElementById('scan-line');
+        const statusText = document.getElementById('status-text');
+        const confirmBtn = document.getElementById('confirm-btn');
+        const systemStatus = document.getElementById('system-status');
+
+        // 結果頁元素
+        const resCardSuccess = document.getElementById('result-card-success');
+        const resCardFail = document.getElementById('result-card-fail');
+        const resSnippet = document.getElementById('res-snippet');
+        const resTitle = document.getElementById('res-title');
+        const resAuthor = document.getElementById('res-author');
+        const resMiniImg = document.getElementById('res-mini-img');
+
+        let currentOrientation = 'portrait';
+
+        // 1. 切換尺寸 (直式/橫式)
+        function setOrientation(type) {
+            currentOrientation = type;
+            const activeClass = "bg-[#D9CB0B] text-black border-[#D9CB0B] shadow-[4px_4px_0px_#333]";
+            const inactiveClass = "bg-[#1a1a1a] text-gray-400 border-[#333] shadow-[4px_4px_0px_#000]";
+
+            if (type === 'portrait') {
+                updateBtnStyle(btnPortrait, true);
+                updateBtnStyle(btnLandscape, false);
+                frameContainer.style.width = '280px';
+                frameContainer.style.height = '380px';
+            } else {
+                updateBtnStyle(btnPortrait, false);
+                updateBtnStyle(btnLandscape, true);
+                frameContainer.style.width = '340px'; 
+                frameContainer.style.height = '240px';
+            }
+        }
+
+        function updateBtnStyle(btn, isActive) {
+            const checkMark = btn.querySelector('.check-mark');
+            if (isActive) {
+                btn.className = `active-press relative group p-3 border-2 transition-all bg-[#D9CB0B] text-black border-[#D9CB0B] shadow-[4px_4px_0px_#333]`;
+                checkMark.style.opacity = '1';
+            } else {
+                btn.className = `active-press relative group p-3 border-2 transition-all bg-[#1a1a1a] text-gray-400 border-[#333] shadow-[4px_4px_0px_#000]`;
+                checkMark.style.opacity = '0';
+            }
+        }
+
+        // 2. 觸發上傳
+        function triggerUpload() {
+            fileInput.click();
+        }
+
+        // 3. 處理圖片選擇
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                statusText.innerText = "READING DATA...";
+                
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('opacity-0');
+                    placeholderUi.classList.add('opacity-0');
+                    scanLine.classList.remove('hidden');
+                    confirmBtn.classList.remove('hidden');
+                    statusText.innerText = "IMAGE LOADED // READY";
+                    statusText.classList.remove('animate-pulse');
+                    
+                    // 同步到結果頁的小圖
+                    resMiniImg.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 4. 開始分析 (模擬 AI)
+        function startAnalysis() {
+            // 鎖定按鈕
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = `<i data-lucide="loader-2" class="animate-spin"></i> UPLOADING TO GEMINI...`;
+            statusText.innerText = "CONNECTING TO DATABASE...";
+            statusText.classList.add('animate-pulse');
+            
+            // 模擬延遲 5.5秒
+            setTimeout(() => {
+                analyzeImageMock();
+            }, 5500);
+        }
+
+        // 5. 模擬後端邏輯
+        function analyzeImageMock() {
+            // 隱藏上傳頁，顯示結果頁
+            viewUpload.classList.add('hidden');
+            viewResult.classList.remove('hidden');
+            systemStatus.innerText = "RESULT_VIEW";
+            
+            // 隨機決定成功或失敗 (80% 成功率，方便測試)
+            const isSuccess = Math.random() > 0.1; 
+
+            if (isSuccess) {
+                // 成功：隨機選一首詩
+                const randomPoem = POEM_DATABASE[Math.floor(Math.random() * POEM_DATABASE.length)];
+                
+                resSnippet.innerText = `「${randomPoem.snippet}」`;
+                resTitle.innerText = randomPoem.title;
+                resAuthor.innerText = randomPoem.author;
+
+                resCardSuccess.classList.remove('hidden');
+                resCardFail.classList.add('hidden');
+            } else {
+                // 失敗
+                resCardSuccess.classList.add('hidden');
+                resCardFail.classList.remove('hidden');
+            }
+            
+            // 重新整理圖示 (因為切換了 hidden)
+            lucide.createIcons();
+        }
+
+        // 6. 重置 UI (回到上傳頁)
+        function resetUI() {
+            // 清空資料
+            fileInput.value = '';
+            imagePreview.src = '';
+            imagePreview.classList.add('opacity-0');
+            placeholderUi.classList.remove('opacity-0');
+            scanLine.classList.add('hidden');
+            confirmBtn.classList.add('hidden');
+            
+            // 按鈕重置
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<i data-lucide="cpu"></i> START ANALYSIS`;
+            
+            statusText.innerText = "WAITING FOR INPUT...";
+            systemStatus.innerText = "SYS_READY";
+
+            // 切換視圖
+            viewResult.classList.add('hidden');
+            viewUpload.classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>
