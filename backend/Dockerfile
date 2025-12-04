@@ -39,6 +39,6 @@ RUN npm run build-css
 COPY . .
 
 # 10. 執行 collectstatic，收集所有靜態檔案 (包含 Tailwind CSS 和 Admin 的 CSS)
-RUN python3 manage.py collectstatic --noinput
+RUN SECRET_KEY=build_time_secret_key python3 manage.py collectstatic --noinput
 
 CMD ["./startup.sh"]
