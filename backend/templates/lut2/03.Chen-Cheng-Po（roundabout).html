@@ -388,7 +388,7 @@
                 zoomGroup.style.display = 'flex';
                 zoomSlider.min = capabilities.zoom.min;
                 zoomSlider.max = capabilities.zoom.max;
-                Slider.step = capabilities.zoom.step || 0.1;
+                zoomSlider.step = capabilities.zoom.step || 0.1;
                 zoomSlider.value = settings.zoom || capabilities.zoom.min;
                 zoomSlider.addEventListener('input', (e) => {
                     track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] })
