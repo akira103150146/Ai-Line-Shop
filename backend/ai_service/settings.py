@@ -63,6 +63,8 @@ else:
 
 # SECRET_KEY 現在會根據環境，自動從 .env 或 Secret Manager 讀取
 SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY 環境變數未設定！這在生產環境中是嚴重的安全問題。")
 
 # 根據環境切換 DEBUG 模式
 if ENV_TYPE == 'prod':
@@ -242,6 +244,19 @@ STORAGES = {
 MEDIA_ROOT = BASE_DIR / "media"
 # 媒體檔案的 URL 前綴
 MEDIA_URL = '/media/'
+
+# ⚠️ 重要：在 Cloud Run 中，容器是無狀態的，本地文件系統的數據會在容器重啟後丟失
+# 生產環境建議使用 Google Cloud Storage (GCS) 來存儲媒體文件
+# 可以使用 django-storages 套件：pip install django-storages[google]
+# 並配置 STORAGES['default'] 使用 GCS
+if ENV_TYPE == 'prod':
+    import warnings
+    warnings.warn(
+        "⚠️ 警告：生產環境使用本地文件系統存儲媒體文件。"
+        "在 Cloud Run 中，這些文件會在容器重啟後丟失。"
+        "建議使用 Google Cloud Storage (GCS) 來存儲媒體文件。",
+        UserWarning
+    )
 # ==============================================================================
 
 
@@ -256,10 +271,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # ==============================================================================
-# 生產環境 CSRF 安全設定
+# 生產環境安全設定
 # ==============================================================================
 if ENV_TYPE == 'prod':
     SERVICE_URL = os.getenv('SERVICE_URL')
     if SERVICE_URL:
         # 信任來自 Cloud Run 服務 URL 的 HTTPS 請求
         CSRF_TRUSTED_ORIGINS = [SERVICE_URL]
+        # 確保使用 HTTPS
+        SECURE_SSL_REDIRECT = False  # Cloud Run 已經處理 HTTPS
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+        SECURE_BROWSER_XSS_FILTER = True
+        SECURE_CONTENT_TYPE_NOSNIFF = True
+        X_FRAME_OPTIONS = 'DENY'
+        
+        # 安全標頭（通過 Cloud Run 或中間件設置）
+        SECURE_HSTS_SECONDS = 31536000  # 1 年
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True

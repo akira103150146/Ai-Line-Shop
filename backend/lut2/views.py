@@ -84,6 +84,31 @@ def upload_image(request):
             image_file = request.FILES['image']
             orientation = request.POST.get('orientation', 'portrait')
             
+            # 安全驗證：文件大小限制（10MB）
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            if image_file.size > MAX_FILE_SIZE:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'文件大小超過限制（最大 {MAX_FILE_SIZE // 1024 // 1024}MB）'
+                }, status=400)
+            
+            # 安全驗證：文件類型檢查
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+            if image_file.content_type not in allowed_types:
+                return JsonResponse({
+                    'success': False,
+                    'message': '不支援的文件類型。僅支援：JPEG, PNG, GIF, WebP'
+                }, status=400)
+            
+            # 安全驗證：文件擴展名檢查
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+            file_ext = os.path.splitext(image_file.name)[1].lower()
+            if file_ext not in allowed_extensions:
+                return JsonResponse({
+                    'success': False,
+                    'message': '不支援的文件擴展名'
+                }, status=400)
+            
             # 驗證方向
             if orientation not in ['portrait', 'landscape']:
                 orientation = 'portrait'
