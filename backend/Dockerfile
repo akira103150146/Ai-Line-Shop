@@ -35,6 +35,7 @@ RUN npm run build-css
 
 # 10. 執行 collectstatic
 # 為了避免 collectstatic 報錯，這裡給一個假的 SECRET_KEY 僅供構建使用
-RUN SECRET_KEY=build_time_secret_key python3 manage.py collectstatic --noinput
+# [重要] 設定 ENV_TYPE=prod 以確保使用 WhiteNoise 的 CompressedManifestStaticFilesStorage 生成 staticfiles.json
+RUN ENV_TYPE=prod SECRET_KEY=build_time_secret_key python3 manage.py collectstatic --noinput
 
 CMD ["./startup.sh"]

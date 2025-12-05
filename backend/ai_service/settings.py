@@ -23,13 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 環境判斷與金鑰載入 (PRODUCTION vs DEVELOPMENT)
 # ==============================================================================
 
-# 預設環境為開發環境
-ENV_TYPE = 'dev'
+# 預設環境為開發環境，但允許透過環境變數覆蓋 (例如在 Docker build 階段設定為 prod)
+ENV_TYPE = os.environ.get('ENV_TYPE', 'dev')
 # Cloud Run 會自動注入這個環境變數
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT") 
 
 if GCP_PROJECT_ID:
-    # 如果偵測到 GCP_PROJECT 環境變數，則切換為生產環境
+    # 如果偵測到 GCP_PROJECT 環境變數，則強制切換為生產環境
     ENV_TYPE = 'prod'
     try:
         # 僅在生產環境中才 import GCP 相關套件
@@ -50,10 +50,11 @@ if GCP_PROJECT_ID:
         # 在生產環境中，如果載入失敗，我們應該讓它崩潰
         raise
 else:
-    # 如果不在 GCP (ENV_TYPE 保持 'dev')，則從本地 .env 檔案載入
+    # 如果不在 GCP (例如本地開發或 Docker build 階段)
     from dotenv import load_dotenv
     load_dotenv(os.path.join(BASE_DIR, '.env'))
-    print("Running in DEV mode, loaded .env file.") # 方便本地除錯
+    if ENV_TYPE == 'dev':
+        print("Running in DEV mode, loaded .env file.") # 方便本地除錯
 
 # ==============================================================================
 
@@ -249,26 +250,42 @@ MEDIA_URL = '/media/'
 GS_BUCKET_NAME = 'lut2-service-media'
 
 if ENV_TYPE == 'prod':
-    # 生產環境：使用 Google Cloud Storage
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
-            "OPTIONS": {
-                "bucket_name": GS_BUCKET_NAME,
-                "default_acl": None,
-                # 如果不想覆蓋同名檔案，可設為 False
-                "file_overwrite": False,
-                "querystring_auth": False,
-            },
-        },
-        "staticfiles": {
-            # 靜態檔案繼續使用 WhiteNoise
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
+    # 生產環境配置
     
-    # 修改 MEDIA_URL 指向 GCS
-    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    # 判斷是否為真實 GCP 環境 (有 Project ID) 還是構建環境 (Docker build)
+    if GCP_PROJECT_ID:
+        # 真實 GCP 環境：使用 Google Cloud Storage 儲存媒體檔案
+        STORAGES = {
+            "default": {
+                "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+                "OPTIONS": {
+                    "bucket_name": GS_BUCKET_NAME,
+                    "default_acl": None,
+                    # 如果不想覆蓋同名檔案，可設為 False
+                    "file_overwrite": False,
+                    "querystring_auth": False,
+                },
+            },
+            "staticfiles": {
+                # 靜態檔案使用 WhiteNoise (需生成 manifest)
+                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            },
+        }
+        # 修改 MEDIA_URL 指向 GCS
+        MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    else:
+        # 構建環境 (Docker build)：
+        # 使用 WhiteNoise 生成靜態檔案 manifest，但使用本地文件系統作為媒體儲存
+        # 這樣可以避免在沒有 GCP 憑證的情況下初始化 GoogleCloudStorage 而報錯
+        STORAGES = {
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            },
+        }
+        MEDIA_URL = '/media/'
 
 else:
     # 開發環境：維持使用本地檔案系統
