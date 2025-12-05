@@ -1,10 +1,34 @@
-# .dockerignore
+Git
 
 .git
 .gitignore
+
+Python
+
 .env
 venv/
-/__pycache__/
+pycache/
 *.pyc
 db.sqlite3
+
+Static Files
+
+忽略收集後的靜態檔目錄
+
 staticfiles/
+
+忽略本地編譯出的 CSS，強迫 Docker 容器內重新編譯，避免版本混亂
+
+static/css/tailwind.css
+
+Node.js (關鍵！)
+
+必須忽略，否則會覆蓋掉 Docker 內 npm install 的結果，導致架構不相容錯誤
+
+node_modules/
+npm-debug.log
+yarn-error.log
+
+System
+
+.DS_Store

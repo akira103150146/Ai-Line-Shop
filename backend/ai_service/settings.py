@@ -142,41 +142,41 @@ DATABASES = {
 # 強制日誌 (DEBUGGING 500 ERRORS)
 # ==============================================================================
 # 強制將所有日誌 (包含 SQL 查詢) 輸出到主控台
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'simple': {
-#             'format': '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
-#         },
-#     },
-#     'handlers': {
-#         'console': {
-#             'level': 'DEBUG',  # 捕捉 DEBUG 或更高等級的日誌
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'simple',
-#         },
-#     },
-#     'root': {
-#         # 將所有未被捕獲的日誌都送到 console
-#         'handlers': ['console'],
-#         'level': 'DEBUG',
-#     },
-#     'loggers': {
-#         'django': {
-#             # 捕獲所有 Django 核心的日誌
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#             'propagate': False,
-#         },
-#         'django.db.backends': {
-#             # 這是關鍵：強迫 Django 印出它執行的每一條 SQL 查詢
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#             'propagate': False,
-#         },
-#     },
-# }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[%(levelname)s] %(asctime)s - %(name)s - %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',  # 捕捉 DEBUG 或更高等級的日誌
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        # 將所有未被捕獲的日誌都送到 console
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+    'loggers': {
+        'django': {
+            # 捕獲所有 Django 核心的日誌
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            # 這是關鍵：強迫 Django 印出它執行的每一條 SQL 查詢
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
 # ==============================================================================
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -227,14 +227,14 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 設定 WhiteNoise 為靜態檔案的儲存後端
 # Django 5.2+ 需要同時設定 default 和 staticfiles
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "django.core.files.storage.FileSystemStorage",
+#     },
+#     "staticfiles": {
+#         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+#     },
+# }
 # ==============================================================================
 
 # ==============================================================================
@@ -245,18 +245,41 @@ MEDIA_ROOT = BASE_DIR / "media"
 # 媒體檔案的 URL 前綴
 MEDIA_URL = '/media/'
 
-# ⚠️ 重要：在 Cloud Run 中，容器是無狀態的，本地文件系統的數據會在容器重啟後丟失
-# 生產環境建議使用 Google Cloud Storage (GCS) 來存儲媒體文件
-# 可以使用 django-storages 套件：pip install django-storages[google]
-# 並配置 STORAGES['default'] 使用 GCS
+# 設定 GCS Bucket 名稱 (建議從環境變數讀取，或直接寫死)
+GS_BUCKET_NAME = 'lut2-service-media'
+
 if ENV_TYPE == 'prod':
-    import warnings
-    warnings.warn(
-        "⚠️ 警告：生產環境使用本地文件系統存儲媒體文件。"
-        "在 Cloud Run 中，這些文件會在容器重啟後丟失。"
-        "建議使用 Google Cloud Storage (GCS) 來存儲媒體文件。",
-        UserWarning
-    )
+    # 生產環境：使用 Google Cloud Storage
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            "OPTIONS": {
+                "bucket_name": GS_BUCKET_NAME,
+                "default_acl": None,
+                # 如果不想覆蓋同名檔案，可設為 False
+                "file_overwrite": False,
+                "querystring_auth": False,
+            },
+        },
+        "staticfiles": {
+            # 靜態檔案繼續使用 WhiteNoise
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    
+    # 修改 MEDIA_URL 指向 GCS
+    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+
+else:
+    # 開發環境：維持使用本地檔案系統
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 # ==============================================================================
 
 
